@@ -107,6 +107,42 @@ sender_num       |optional| Number of concurrency sending notification per http 
 request_per_sec  |optional| Flow rate as notifications per sec no your application. (default: 2000).
 error_hook       |optional| Error hook command. This command runs when Gunfish catches an error response.
 
+## Error Hook
+
+Error hook command can get an each error response with JSON format by STDIN.
+
+for example JSON structure:
+```json
+{
+  "response": {
+ "apns-id": "",
+ "status": 400
+  },
+  "response_time": 0.633673848,
+  "request": {
+ "header": {},
+ "token": "9fe817acbcef8173fb134d8a80123cba243c8376af83db8caf310daab1f23003",
+ "payload": {
+   "aps": {
+     "alert": "error alert test",
+     "badge": 1,
+     "sound": "default"
+   },
+   "Optional": {
+     "option1": "hoge",
+     "option2": "hoge"
+   }
+ },
+ "tries": 0
+  },
+  "error_msg": {
+ "reason": "MissingTopic",
+ "timestamp": 0
+  }
+}
+```
+
+
 ## Graceful Restart
 Gunfish supports graceful restarting based on `Start Server`. So, you should start on `start_server` command if you want graceful to restart.
 
