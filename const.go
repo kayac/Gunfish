@@ -29,7 +29,7 @@ const (
 	// SendRetryCount is the threashold which is resend count.
 	SendRetryCount = 10
 	// RetryWaitTime is periodical time to retrieve notifications from retry queue to resend
-	RetryWaitTime = time.Millisecond * 500
+	RetryWaitTime = time.Millisecond * 5000
 	// RetryOnceCount is the number of sending notification at once.
 	RetryOnceCount = 1000
 	// Default multiplicity of sending notifications to apns. If not configures
