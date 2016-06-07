@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"os/exec"
 	"sync"
@@ -116,6 +117,7 @@ func StartSupervisor(conf *Config) (Supervisor, error) {
 
 	// Time ticker to retry to send
 	go func() {
+		waitC := 0
 		for {
 			select {
 			case <-s.ticker.C:
@@ -139,6 +141,18 @@ func StartSupervisor(conf *Config) (Supervisor, error) {
 			case <-s.exit:
 				s.ticker.Stop()
 				return
+			}
+
+			// exponential backoff between APNs
+			if len(s.retryq) > 0 {
+				if waitC < SendRetryCount {
+					waitC++
+				}
+				waitN := math.Pow(float64(RetryWaitIncrRate), float64(waitC))
+				s.ticker = time.NewTicker(RetryWaitTime * time.Duration(waitN))
+			} else {
+				waitC = 0
+				s.ticker = time.NewTicker(RetryWaitTime)
 			}
 		}
 	}()

@@ -46,6 +46,8 @@ const (
 	AverageResponseTime = time.Millisecond * 150
 	// Minimum RetryAfter time (seconds).
 	RetryAfterSecond = time.Second * 10
+	// Retry wait time incremental rate for exponential backoff
+	RetryWaitIncrRate = 1.1
 	// Gunfish returns RetryAfter header based on 'Exponential Backoff'. Therefore,
 	// that defines the wait time threshold so as not to wait too long.
 	ResetRetryAfterSecond = time.Second * 60
