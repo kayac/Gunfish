@@ -40,6 +40,7 @@ type Alert struct {
 
 // PostedData is posted data to this provider server /push/apns.
 type PostedData struct {
+	Header  Header  `json:"header,omitempty"`
 	Token   string  `json:"token"`
 	Payload Payload `json:"payload"`
 }

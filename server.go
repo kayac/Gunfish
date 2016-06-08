@@ -210,6 +210,7 @@ func (prov *Provider) pushHandler() http.HandlerFunc {
 			}
 
 			req := Request{
+				Header:  p.Header,
 				Token:   p.Token,
 				Payload: p.Payload,
 				Tries:   0,
