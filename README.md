@@ -44,6 +44,31 @@ payload param | description
 token | Published token from APNS to user's remote device
 payload | APNS notification payload
 
+Post JSON example:
+```json
+[
+    {
+        "payload": {
+            "aps": {
+                  "alert": "test notification",
+                  "sound": "default"
+            },
+            "option1": "foo",
+            "option2": "bar"
+        },
+        "token": "apns device token",
+        "headers": {
+            "apns-id": "your apns id"
+        }
+    },
+]
+```
+
+Response example:
+```
+{"result": "ok"}
+```
+
 ### GET /stats/app
 
 To get the status of APNS proveder server. 
