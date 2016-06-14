@@ -65,7 +65,7 @@ Post JSON example:
 ```
 
 Response example:
-```
+```json
 {"result": "ok"}
 ```
 
