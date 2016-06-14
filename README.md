@@ -60,7 +60,7 @@ Post JSON example:
         "headers": {
             "apns-id": "your apns id"
         }
-    },
+    }
 ]
 ```
 
