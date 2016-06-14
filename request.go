@@ -14,7 +14,7 @@ type Request struct {
 
 // Header for apns request
 type Header struct {
-	ApnsID         string `json:"aps-id,omitempty"`
+	ApnsID         string `json:"apns-id,omitempty"`
 	ApnsExpiration string `json:"apns-expiration,omitempty"`
 	ApnsPriority   string `json:"apns-priority,omitempty"`
 	ApnsTopic      string `json:"apns-topic,omitempty"`
