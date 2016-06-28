@@ -57,8 +57,9 @@ Post JSON example:
             "option2": "bar"
         },
         "token": "apns device token",
-        "headers": {
+        "header": {
             "apns-id": "your apns id"
+            "apns-token": "your app bundle id"
         }
     }
 ]
