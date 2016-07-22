@@ -38,7 +38,7 @@ const (
 	// Default array size of posted data. If not configures at file, this value is set.
 	DefaultRequestQueueSize = 2000
 	// Default port number of provider server
-	DefaultPort = 38003
+	DefaultPort = 8003
 	// Default supervisor's queue size. If not configures at file, this value is set.
 	DefaultQueueSize = 1000
 	// About the average time of response from apns. That value is not accurate
