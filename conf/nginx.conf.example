@@ -1,0 +1,41 @@
+worker_processes  4;
+
+pid        logs/nginx.pid;
+
+events {
+    worker_connections  256;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    access_log  logs/access.log;
+    error_log  logs/error.log;
+
+    sendfile        on;
+
+    keepalive_timeout  65;
+
+    upstream apns_mock {
+        server 127.0.0.1:8311;
+    }
+
+    server {
+        listen       443 ssl http2;
+        server_name  localhost;
+
+        ssl_certificate      ssl/server.crt;
+        ssl_certificate_key  ssl/server.key;
+
+        ssl_session_cache    shared:SSL:1m;
+        ssl_session_timeout  5m;
+
+        ssl_ciphers  HIGH:!aNULL:!MD5;
+        ssl_prefer_server_ciphers  on;
+
+        location / {
+            proxy_pass https://apns_mock;
+        }
+    }
+}
