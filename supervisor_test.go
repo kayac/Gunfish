@@ -35,14 +35,14 @@ func (tr TestResponseHandler) OnResponse(req Request, resp Response, err error) 
 	tr.wg.Add(1)
 	if err != nil {
 		logrus.Warnf(err.Error())
-		if err.Error() == MissingTopic.String() {
-			tr.Countup(MissingTopic.String())
+		if err.Error() == apns.MissingTopic.String() {
+			tr.Countup(apns.MissingTopic.String())
 		}
-		if err.Error() == BadDeviceToken.String() {
-			tr.Countup(BadDeviceToken.String())
+		if err.Error() == apns.BadDeviceToken.String() {
+			tr.Countup(apns.BadDeviceToken.String())
 		}
-		if err.Error() == Unregistered.String() {
-			tr.Countup(Unregistered.String())
+		if err.Error() == apns.Unregistered.String() {
+			tr.Countup(apns.Unregistered.String())
 		}
 	} else {
 		tr.Countup("success")
@@ -84,7 +84,7 @@ func TestEnqueuRequestToSupervisor(t *testing.T) {
 	// Prepare
 	wg := sync.WaitGroup{}
 	score := make(map[string]*int, 4)
-	for _, v := range []string{MissingTopic.String(), BadDeviceToken.String(), Unregistered.String(), "success"} {
+	for _, v := range []string{apns.MissingTopic.String(), apns.BadDeviceToken.String(), apns.Unregistered.String(), "success"} {
 		x := 0
 		score[v] = &x
 	}
@@ -126,14 +126,14 @@ func TestEnqueuRequestToSupervisor(t *testing.T) {
 	wg.Wait()
 	sup.Shutdown()
 
-	if *(score[MissingTopic.String()]) != 1 {
-		t.Errorf("Expected MissingTopic count is 1 but got %d", *(score[MissingTopic.String()]))
+	if *(score[apns.MissingTopic.String()]) != 1 {
+		t.Errorf("Expected MissingTopic count is 1 but got %d", *(score[apns.MissingTopic.String()]))
 	}
-	if *(score[Unregistered.String()]) != 1 {
-		t.Errorf("Expected Unregistered count is 1 but got %d", *(score[Unregistered.String()]))
+	if *(score[apns.Unregistered.String()]) != 1 {
+		t.Errorf("Expected Unregistered count is 1 but got %d", *(score[apns.Unregistered.String()]))
 	}
-	if *(score[BadDeviceToken.String()]) != 1 {
-		t.Errorf("Expected BadDeviceToken count is 1 but got %d", *(score[BadDeviceToken.String()]))
+	if *(score[apns.BadDeviceToken.String()]) != 1 {
+		t.Errorf("Expected BadDeviceToken count is 1 but got %d", *(score[apns.BadDeviceToken.String()]))
 	}
 	if *(score["success"]) != 70 {
 		t.Errorf("Expected success count is 70 but got %d", *(score["success"]))
@@ -168,7 +168,7 @@ func repeatRequestData(token string, num int) []Request {
 func TestSuccessOrFailureInvoke(t *testing.T) {
 	// prepare SenderResponse
 	token := "invalid token"
-	sre := fmt.Errorf(Unregistered.String())
+	sre := fmt.Errorf(apns.Unregistered.String())
 	aps := &apns.APS{
 		Alert: apns.Alert{
 			Title: "test",
