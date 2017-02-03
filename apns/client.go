@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"golang.org/x/net/http2"
 )
 
