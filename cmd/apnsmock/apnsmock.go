@@ -2,7 +2,9 @@ package main
 
 import (
 	"flag"
+
 	"github.com/kayac/Gunfish"
+	"github.com/kayac/Gunfish/apns"
 )
 
 func main() {
@@ -16,5 +18,5 @@ func main() {
 	if err != nil {
 		return
 	}
-	gunfish.StartAPNSMockServer(config)
+	apns.StartAPNSMockServer(config.Apns.CertFile, config.Apns.KeyFile)
 }
