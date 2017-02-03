@@ -15,6 +15,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/fukata/golang-stats-api-handler"
+	"github.com/kayac/Gunfish/apns"
 	"github.com/lestrrat/go-server-starter/listener"
 	"github.com/shogo82148/go-gracedown"
 	"golang.org/x/net/netutil"
@@ -29,7 +30,7 @@ type Provider struct {
 // ResponseHandler provides you to implement handling on success or on error response from apns.
 // Therefore, you can specifies hook command which is set at toml file.
 type ResponseHandler interface {
-	OnResponse(*Request, *Response, error)
+	OnResponse(Request, Response, error)
 	HookCmd() string
 }
 
@@ -39,7 +40,7 @@ type DefaultResponseHandler struct {
 }
 
 // OnResponse is performed when to receive response from APNS.
-func (rh DefaultResponseHandler) OnResponse(req *Request, res *Response, err error) {
+func (rh DefaultResponseHandler) OnResponse(req Request, res Response, err error) {
 }
 
 // HookCmd returns hook command to execute after getting response from APNS
@@ -204,12 +205,12 @@ func (prov *Provider) pushHandler() http.HandlerFunc {
 		for i, p := range ps {
 			switch t := p.Payload.Alert.(type) {
 			case map[string]interface{}:
-				var alert Alert
+				var alert apns.Alert
 				mapToAlert(t, &alert)
 				p.Payload.Alert = alert
 			}
 
-			req := Request{
+			req := apns.Request{
 				Header:  p.Header,
 				Token:   p.Token,
 				Payload: p.Payload,
@@ -291,7 +292,7 @@ func validateStatsHandler(res http.ResponseWriter, req *http.Request) bool {
 	return true
 }
 
-func mapToAlert(mapVal map[string]interface{}, alert *Alert) {
+func mapToAlert(mapVal map[string]interface{}, alert *apns.Alert) {
 	a := reflect.ValueOf(alert).Elem()
 	for k, v := range mapVal {
 		newk, ok := AlertKeyToField[k]
