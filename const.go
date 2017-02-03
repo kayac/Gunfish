@@ -24,8 +24,6 @@ const (
 
 // Default values
 const (
-	// HTTP2 client timeout
-	HTTP2ClientTimeout = time.Second * 10
 	// SendRetryCount is the threashold which is resend count.
 	SendRetryCount = 10
 	// RetryWaitTime is periodical time to retrieve notifications from retry queue to resend
@@ -59,13 +57,17 @@ const (
 	ShutdownWaitTime = time.Millisecond * 10
 	// That is the count while request counter is 0 in the 'ShutdownWaitTime' period.
 	RestartWaitCount = 50
+
+	// That is GCM client timeout
+	GCMClientTimeout = time.Second * 10
 )
 
 // Apns endpoints
 const (
-	DevServer  = "https://api.development.push.apple.com"
-	ProdServer = "https://api.push.apple.com"
-	MockServer = "https://localhost:2195"
+	APNsDevURL  = "https://api.development.push.apple.com"
+	APNsProdURL = "https://api.push.apple.com"
+	APNsMockURL = "https://localhost:2195"
+	GCMProdURL  = "https://gcm-http.googleapis.com/gcm/send"
 )
 
 // Supports Content-Type
