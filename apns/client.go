@@ -20,15 +20,15 @@ const (
 
 // APNsClient is Client
 type Client struct {
-	host   string
-	client *http.Client
+	Host   string
+	Client *http.Client
 }
 
 // NewAPNsClient returns APNsClient
 func NewAPNsClient(host string, c *http.Client) Client {
 	return Client{
-		host:   host,
-		client: c,
+		Host:   host,
+		Client: c,
 	}
 }
 
@@ -40,7 +40,7 @@ func (ac *Client) Send(req Request) (*Response, error) {
 		return nil, err
 	}
 
-	res, err := ac.client.Do(nreq)
+	res, err := ac.Client.Do(nreq)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (ac *Client) Send(req Request) (*Response, error) {
 
 // NewRequest creates request for apns
 func (ac *Client) NewRequest(token string, h *Header, payload Payload) (*http.Request, error) {
-	u, err := url.Parse(fmt.Sprintf("%s/3/device/%s", ac.host, token))
+	u, err := url.Parse(fmt.Sprintf("%s/3/device/%s", ac.Host, token))
 	if err != nil {
 		return nil, err
 	}
