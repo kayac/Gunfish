@@ -1,4 +1,4 @@
-package gunfish
+package apns
 
 import (
 	"crypto/tls"
@@ -11,8 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"golang.org/x/net/http2"
+)
+
+const (
+	ApplicationJSON        = "application/json"
+	LimitApnsTokenByteSize = 100 // Payload byte size.
 )
 
 // StartAPNSMockServer starts HTTP/2 server for mock
@@ -43,11 +47,6 @@ func StartAPNSMockServer(cert, key string) {
 	}
 
 	tlsListener := tls.NewListener(ln, tlsConf)
-
-	// Set Handlers
-	LogWithFields(logrus.Fields{
-		"type": "apns_mock",
-	}).Info("Starts APNS mock server.")
 
 	http.HandleFunc("/3/device/", func(w http.ResponseWriter, r *http.Request) {
 		// sets the response time from apns server
