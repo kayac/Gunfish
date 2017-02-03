@@ -16,6 +16,10 @@ func (r Request) Request() interface{} {
 	return r
 }
 
+func (r Request) RetryCount() int {
+	return r.Tries
+}
+
 // Header for apns request
 type Header struct {
 	ApnsID         string `json:"apns-id,omitempty"`

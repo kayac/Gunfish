@@ -1,13 +1,12 @@
 package gunfish
 
 import (
-	"encoding/json"
-
 	"github.com/kayac/Gunfish/apns"
 )
 
 type Request interface {
 	Request() interface{}
+	RetryCount() int
 }
 
 // PostedData is posted data to this provider server /push/apns.
