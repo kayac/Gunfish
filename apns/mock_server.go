@@ -16,7 +16,7 @@ import (
 )
 
 // StartAPNSMockServer starts HTTP/2 server for mock
-func StartAPNSMockServer(config Config) {
+func StartAPNSMockServer(cert, key string) {
 	// Create TLSlistener
 	s := http.Server{}
 	s.Addr = ":2195"
@@ -32,7 +32,7 @@ func StartAPNSMockServer(config Config) {
 
 	var err error
 	tlsConf.Certificates = make([]tls.Certificate, 1)
-	tlsConf.Certificates[0], err = tls.LoadX509KeyPair(config.Apns.CertFile, config.Apns.KeyFile)
+	tlsConf.Certificates[0], err = tls.LoadX509KeyPair(cert, key)
 	if err != nil {
 		return
 	}
@@ -98,8 +98,8 @@ func StartAPNSMockServer(config Config) {
 }
 
 // StopAPNSServer stops APNS Mock server
-func StopAPNSServer(config Config) error {
-	client, err := NewConnection(config.Apns.CertFile, config.Apns.CertFile, config.Apns.SkipInsecure)
+func StopAPNSServer(cert, key string, insecure bool) error {
+	client, err := NewConnection(cert, key, insecure)
 	if err != nil {
 		return err
 	}
