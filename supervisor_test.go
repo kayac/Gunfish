@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/kayac/Gunfish/apns"
 )
 
 var (
@@ -29,7 +30,8 @@ func (tr *TestResponseHandler) Countup(name string) {
 	*(tr.scoreboard[name])++
 }
 
-func (tr TestResponseHandler) OnResponse(req *Request, resp *Response, err error) {
+func (tr TestResponseHandler) OnResponse(req Request, resp Response, err error) {
+	areq := req.(apns.Request)
 	tr.wg.Add(1)
 	if err != nil {
 		logrus.Warnf(err.Error())
@@ -45,7 +47,7 @@ func (tr TestResponseHandler) OnResponse(req *Request, resp *Response, err error
 	} else {
 		tr.Countup("success")
 	}
-	tr.Done(req.Token)
+	tr.Done(areq.Token)
 }
 
 func (tr TestResponseHandler) HookCmd() string {
@@ -142,17 +144,17 @@ func repeatRequestData(token string, num int) []Request {
 	var reqs []Request
 	for i := 0; i < num; i++ {
 		// Create request
-		aps := &APS{
-			Alert: &Alert{
+		aps := &apns.APS{
+			Alert: &apns.Alert{
 				Title: "test",
 				Body:  "message",
 			},
 			Sound: "default",
 		}
-		payload := Payload{}
+		payload := apns.Payload{}
 		payload.APS = aps
 
-		req := Request{
+		req := apns.Request{
 			Token:   token,
 			Payload: payload,
 			Tries:   0,
@@ -167,23 +169,23 @@ func TestSuccessOrFailureInvoke(t *testing.T) {
 	// prepare SenderResponse
 	token := "invalid token"
 	sre := fmt.Errorf(Unregistered.String())
-	aps := &APS{
-		Alert: Alert{
+	aps := &apns.APS{
+		Alert: apns.Alert{
 			Title: "test",
 			Body:  "hoge message",
 		},
 		Badge: 1,
 		Sound: "default",
 	}
-	payload := Payload{}
+	payload := apns.Payload{}
 	payload.APS = aps
 
 	sr := SenderResponse{
-		Res: &Response{
-			ApnsID:     "apns-id-hoge",
+		Res: &apns.Response{
+			APNsID:     "apns-id-hoge",
 			StatusCode: 410,
 		},
-		Req: Request{
+		Req: apns.Request{
 			Token:   token,
 			Payload: payload,
 			Tries:   0,

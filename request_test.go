@@ -3,6 +3,8 @@ package gunfish
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/kayac/Gunfish/apns"
 )
 
 var (
@@ -10,7 +12,7 @@ var (
 )
 
 func TestUnmarshal(t *testing.T) {
-	var payload Payload
+	var payload apns.Payload
 
 	err := json.Unmarshal([]byte(jstr), &payload)
 	if err != nil {

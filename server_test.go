@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/kayac/Gunfish/apns"
 )
 
 func init() {
@@ -302,10 +303,10 @@ func createPostedData(num int) []byte {
 		tokens[i] = fmt.Sprintf("%032d", i)
 	}
 	for i, v := range tokens {
-		payload := Payload{}
+		payload := apns.Payload{}
 
-		payload.APS = &APS{
-			Alert: Alert{
+		payload.APS = &apns.APS{
+			Alert: apns.Alert{
 				Title: "test",
 				Body:  "message",
 			},
