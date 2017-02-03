@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/kayac/Gunfish/apns"
 	"github.com/satori/go.uuid"
 )
 
@@ -29,7 +30,7 @@ type Supervisor struct {
 
 // Worker sends notification to apns.
 type Worker struct {
-	ac             *ApnsClient
+	ac             *apns.Client
 	queue          chan Request
 	respq          chan SenderResponse
 	wgrp           *sync.WaitGroup
@@ -165,7 +166,7 @@ func StartSupervisor(conf *Config) (Supervisor, error) {
 	// Spawn workers
 	var err error
 	for i := 0; i < conf.Provider.WorkerNum; i++ {
-		c, err := NewConnection(conf.Apns.CertFile, conf.Apns.KeyFile, conf.Apns.SkipInsecure)
+		c, err := apns.NewConnection(conf.Apns.CertFile, conf.Apns.KeyFile, conf.Apns.SkipInsecure)
 
 		if err != nil {
 			LogWithFields(logrus.Fields{
@@ -361,7 +362,7 @@ func (w *Worker) receiveRequests(reqs *[]Request) {
 	}
 }
 
-func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.WaitGroup, ac *ApnsClient) {
+func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.WaitGroup, ac *apns.Client) {
 	defer wgrp.Done()
 	atomic.AddInt64(&(srvStats.Senders), 1)
 	for req := range wq {
