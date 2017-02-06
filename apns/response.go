@@ -6,10 +6,6 @@ type Response struct {
 	StatusCode int    `json:"status"`
 }
 
-func (res Response) Response() interface{} {
-	return res
-}
-
 // ErrorResponse from apns
 type ErrorResponse struct {
 	Reason    string `json:"reason"`

@@ -31,7 +31,7 @@ func (tr *TestResponseHandler) Countup(name string) {
 }
 
 func (tr TestResponseHandler) OnResponse(req Request, resp Response, err error) {
-	areq := req.(apns.Request)
+	areq := req.Notification.(apns.Notification)
 	tr.wg.Add(1)
 	if err != nil {
 		logrus.Warnf(err.Error())
@@ -154,10 +154,12 @@ func repeatRequestData(token string, num int) []Request {
 		payload := apns.Payload{}
 		payload.APS = aps
 
-		req := apns.Request{
-			Token:   token,
-			Payload: payload,
-			Tries:   0,
+		req := Request{
+			Notification: apns.Notification{
+				Token:   token,
+				Payload: payload,
+			},
+			Tries: 0,
 		}
 
 		reqs = append(reqs, req)
@@ -185,10 +187,12 @@ func TestSuccessOrFailureInvoke(t *testing.T) {
 			APNsID:     "apns-id-hoge",
 			StatusCode: 410,
 		},
-		Req: apns.Request{
-			Token:   token,
-			Payload: payload,
-			Tries:   0,
+		Req: Request{
+			Notification: apns.Notification{
+				Token:   token,
+				Payload: payload,
+			},
+			Tries: 0,
 		},
 		RespTime: 0.0,
 		Err:      sre,

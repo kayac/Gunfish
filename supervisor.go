@@ -127,7 +127,7 @@ func StartSupervisor(conf *Config) (Supervisor, error) {
 						reqs := &[]Request{req}
 						select {
 						case s.queue <- reqs:
-							LogWithFields(logrus.Fields{"type": "retry", "resend_cnt": req.RetryCount()}).
+							LogWithFields(logrus.Fields{"type": "retry", "resend_cnt": req.Tries}).
 								Debugf("Enqueue to retry to send notification.")
 						default:
 							LogWithFields(logrus.Fields{"type": "retry"}).
@@ -287,16 +287,19 @@ func (s *Supervisor) spawnWorker(w Worker, conf *Config) {
 }
 
 func (w *Worker) receiveResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Command) {
-	req := (resp.Req).(apns.Request)
-	res := (resp.Res).(*apns.Response)
+	req := resp.Req
+
+	// TODO: switch notification type
+	noti := req.Notification.(apns.Notification)
+	res := resp.Res.(*apns.Response)
 
 	// initialize logrus fields
 	logf := logrus.Fields{
 		"type":           "worker",
 		"status":         "-",
 		"apns_id":        "-",
-		"token":          req.Token,
-		"payload":        req.Payload,
+		"token":          noti.Token,
+		"payload":        noti.Payload,
 		"worker_id":      w.id,
 		"res_queue_size": len(w.respq),
 		"resend_cnt":     req.Tries,
@@ -368,12 +371,12 @@ func (w *Worker) receiveRequests(reqs *[]Request) {
 func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.WaitGroup, ac *apns.Client) {
 	defer wgrp.Done()
 	atomic.AddInt64(&(srvStats.Senders), 1)
-	for r := range wq {
-		req := r.(apns.Request)
+	for req := range wq {
+		// TODO: switch by Notification type
+		noti := req.Notification.(apns.Notification)
 		start := time.Now()
-		res, err := ac.Send(req)
+		res, err := ac.Send(noti)
 		respTime := time.Now().Sub(start).Seconds()
-
 		sres := SenderResponse{
 			Res:      res,
 			RespTime: respTime,
@@ -402,13 +405,14 @@ func (s Supervisor) workersAllQueueLength() int {
 }
 
 func onResponse(resp SenderResponse, cmd string, cmdq chan<- Command) {
-	req := (resp.Req).(apns.Request)
 	res := (resp.Res).(*apns.Response)
+	req := resp.Req
+	noti := req.Notification.(apns.Notification)
 
 	logf := logrus.Fields{
 		"type":    "on_response",
-		"token":   req.Token,
-		"payload": req.Payload,
+		"token":   noti.Token,
+		"payload": noti.Payload,
 	}
 
 	// on error handler

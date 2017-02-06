@@ -1,5 +1,3 @@
 package gunfish
 
-type Response interface {
-	Response() interface{}
-}
+type Response interface{}

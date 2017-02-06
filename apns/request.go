@@ -5,19 +5,10 @@ import (
 )
 
 // Request for a http2 client
-type Request struct {
+type Notification struct {
 	Header  Header  `json:"header,omitempty"`
 	Token   string  `json:"token"`
 	Payload Payload `json:"payload"`
-	Tries   int     `json:"tries,int"`
-}
-
-func (r Request) Request() interface{} {
-	return r
-}
-
-func (r Request) RetryCount() int {
-	return r.Tries
 }
 
 // Header for apns request

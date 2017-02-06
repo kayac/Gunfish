@@ -4,10 +4,12 @@ import (
 	"github.com/kayac/Gunfish/apns"
 )
 
-type Request interface {
-	Request() interface{}
-	RetryCount() int
+type Request struct {
+	Notification Notification
+	Tries        int
 }
+
+type Notification interface{}
 
 // PostedData is posted data to this provider server /push/apns.
 type PostedData struct {

@@ -210,11 +210,13 @@ func (prov *Provider) pushHandler() http.HandlerFunc {
 				p.Payload.Alert = alert
 			}
 
-			req := apns.Request{
-				Header:  p.Header,
-				Token:   p.Token,
-				Payload: p.Payload,
-				Tries:   0,
+			req := Request{
+				Notification: apns.Notification{
+					Header:  p.Header,
+					Token:   p.Token,
+					Payload: p.Payload,
+				},
+				Tries: 0,
 			}
 
 			reqs[i] = req

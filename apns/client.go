@@ -18,14 +18,14 @@ const (
 	HTTP2ClientTimeout = time.Second * 10
 )
 
-// APNsClient is Client
+// Client is apns client
 type Client struct {
 	Host   string
 	Client *http.Client
 }
 
-// NewAPNsClient returns APNsClient
-func NewAPNsClient(host string, c *http.Client) Client {
+// NewClient returns Client
+func NewClient(host string, c *http.Client) Client {
 	return Client{
 		Host:   host,
 		Client: c,
@@ -33,14 +33,13 @@ func NewAPNsClient(host string, c *http.Client) Client {
 }
 
 // Send sends notifications to apns
-func (ac *Client) Send(req Request) (*Response, error) {
-	areq := req.Request().(Request)
-	nreq, err := ac.NewRequest(areq.Token, &areq.Header, areq.Payload)
+func (ac *Client) Send(n Notification) (*Response, error) {
+	req, err := ac.NewRequest(n.Token, &n.Header, n.Payload)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := ac.Client.Do(nreq)
+	res, err := ac.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}
