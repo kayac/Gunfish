@@ -24,14 +24,6 @@ type Client struct {
 	Client *http.Client
 }
 
-// NewClient returns Client
-func NewClient(host string, c *http.Client) Client {
-	return Client{
-		Host:   host,
-		Client: c,
-	}
-}
-
 // Send sends notifications to apns
 func (ac *Client) Send(n Notification) (*Response, error) {
 	req, err := ac.NewRequest(n.Token, &n.Header, n.Payload)
