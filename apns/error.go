@@ -1,4 +1,4 @@
-package gunfish
+package apns
 
 // https://developer.apple.com/library/ios/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/Chapters/APNsProviderAPI.html
 //

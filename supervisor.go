@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/kayac/Gunfish/apns"
 	"github.com/satori/go.uuid"
 )
 
@@ -29,23 +30,23 @@ type Supervisor struct {
 
 // Worker sends notification to apns.
 type Worker struct {
-	ac             *ApnsClient
+	ac             *apns.Client
 	queue          chan Request
 	respq          chan SenderResponse
 	wgrp           *sync.WaitGroup
 	sn             int
 	id             int
-	errorHandler   func(*Request, *Response, error)
-	successHandler func(*Request, *Response)
+	errorHandler   func(Request, Response, error)
+	successHandler func(Request, Response)
 }
 
 // SenderResponse is responses to worker from sender.
 type SenderResponse struct {
-	Res      *Response `json:"response"`
-	RespTime float64   `json:"response_time"`
-	Req      Request   `json:"request"`
-	Err      error     `json:"error_msg"`
-	UID      string    `json:"resp_uid"`
+	Res      Response `json:"response"`
+	RespTime float64  `json:"response_time"`
+	Req      Request  `json:"request"`
+	Err      error    `json:"error_msg"`
+	UID      string   `json:"resp_uid"`
 }
 
 // Command has execute command and input stream.
@@ -165,7 +166,7 @@ func StartSupervisor(conf *Config) (Supervisor, error) {
 	// Spawn workers
 	var err error
 	for i := 0; i < conf.Provider.WorkerNum; i++ {
-		c, err := NewConnection(conf.Apns.CertFile, conf.Apns.KeyFile, conf.Apns.SkipInsecure)
+		c, err := apns.NewConnection(conf.Apns.CertFile, conf.Apns.KeyFile, conf.Apns.SkipInsecure)
 
 		if err != nil {
 			LogWithFields(logrus.Fields{
@@ -184,9 +185,9 @@ func StartSupervisor(conf *Config) (Supervisor, error) {
 				respq: make(chan SenderResponse, wqSize),
 				wgrp:  &sync.WaitGroup{},
 				sn:    conf.Apns.SenderNum,
-				ac: &ApnsClient{
-					host:   conf.Apns.Host,
-					client: c,
+				ac: &apns.Client{
+					Host:   conf.Apns.Host,
+					Client: c,
 				},
 			}
 			LogWithFields(logrus.Fields{}).Infof("Response queue size: %d", cap(worker.respq))
@@ -286,16 +287,22 @@ func (s *Supervisor) spawnWorker(w Worker, conf *Config) {
 }
 
 func (w *Worker) receiveResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Command) {
+	req := resp.Req
+
+	// TODO: switch notification type
+	noti := req.Notification.(apns.Notification)
+	res := resp.Res.(*apns.Response)
+
 	// initialize logrus fields
 	logf := logrus.Fields{
 		"type":           "worker",
 		"status":         "-",
 		"apns_id":        "-",
-		"token":          resp.Req.Token,
-		"payload":        resp.Req.Payload,
+		"token":          noti.Token,
+		"payload":        noti.Payload,
 		"worker_id":      w.id,
 		"res_queue_size": len(w.respq),
-		"resend_cnt":     resp.Req.Tries,
+		"resend_cnt":     req.Tries,
 		"response_time":  resp.RespTime,
 		"resp_uid":       resp.UID,
 	}
@@ -304,21 +311,21 @@ func (w *Worker) receiveResponse(resp SenderResponse, retryq chan<- Request, cmd
 	if resp.Err != nil {
 		atomic.AddInt64(&(srvStats.ErrCount), 1)
 		if resp.Res != nil {
-			logf["status"] = fmt.Sprint(resp.Res.StatusCode)
-			logf["apns_id"] = resp.Res.ApnsID
+			logf["status"] = fmt.Sprint(res.StatusCode)
+			logf["apns_id"] = res.APNsID
 
 			LogWithFields(logf).Errorf("%s", resp.Err)
 		} else {
 			// if 'res' is nil,  HTTP connection error with APNS.
 			LogWithFields(logf).Warnf("response is nil. reason: %s", resp.Err.Error())
 
-			if resp.Req.Tries < SendRetryCount {
-				resp.Req.Tries++
+			if req.Tries < SendRetryCount {
+				req.Tries++
 				atomic.AddInt64(&(srvStats.RetryCount), 1)
-				logf["resend_cnt"] = resp.Req.Tries
+				logf["resend_cnt"] = req.Tries
 
 				select {
-				case retryq <- resp.Req:
+				case retryq <- req:
 					LogWithFields(logf).
 						Debugf("Retry to enqueue into retryq because of http connection error with APNS.")
 				default:
@@ -334,8 +341,8 @@ func (w *Worker) receiveResponse(resp SenderResponse, retryq chan<- Request, cmd
 		onResponse(resp, errorResponseHandler.HookCmd(), cmdq)
 	} else {
 		atomic.AddInt64(&(srvStats.SentCount), 1)
-		logf["status"] = fmt.Sprint(resp.Res.StatusCode)
-		logf["apns_id"] = resp.Res.ApnsID
+		logf["status"] = fmt.Sprint(res.StatusCode)
+		logf["apns_id"] = res.APNsID
 
 		LogWithFields(logf).Info("Succeeded to send a notification")
 
@@ -361,14 +368,15 @@ func (w *Worker) receiveRequests(reqs *[]Request) {
 	}
 }
 
-func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.WaitGroup, ac *ApnsClient) {
+func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.WaitGroup, ac *apns.Client) {
 	defer wgrp.Done()
 	atomic.AddInt64(&(srvStats.Senders), 1)
 	for req := range wq {
+		// TODO: switch by Notification type
+		noti := req.Notification.(apns.Notification)
 		start := time.Now()
-		res, err := ac.SendToApns(req)
+		res, err := ac.Send(noti)
 		respTime := time.Now().Sub(start).Seconds()
-
 		sres := SenderResponse{
 			Res:      res,
 			RespTime: respTime,
@@ -397,17 +405,21 @@ func (s Supervisor) workersAllQueueLength() int {
 }
 
 func onResponse(resp SenderResponse, cmd string, cmdq chan<- Command) {
+	res := (resp.Res).(*apns.Response)
+	req := resp.Req
+	noti := req.Notification.(apns.Notification)
+
 	logf := logrus.Fields{
 		"type":    "on_response",
-		"token":   resp.Req.Token,
-		"payload": resp.Req.Payload,
+		"token":   noti.Token,
+		"payload": noti.Payload,
 	}
 
 	// on error handler
 	if resp.Err != nil {
-		errorResponseHandler.OnResponse(&resp.Req, resp.Res, resp.Err)
+		errorResponseHandler.OnResponse(req, res, resp.Err)
 	} else {
-		successResponseHandler.OnResponse(&resp.Req, resp.Res, nil)
+		successResponseHandler.OnResponse(req, res, nil)
 	}
 
 	// if resp.Res is nil (that is http layer error), not execute command.

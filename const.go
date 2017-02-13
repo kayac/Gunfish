@@ -24,8 +24,6 @@ const (
 
 // Default values
 const (
-	// HTTP2 client timeout
-	HTTP2ClientTimeout = time.Second * 10
 	// SendRetryCount is the threashold which is resend count.
 	SendRetryCount = 10
 	// RetryWaitTime is periodical time to retrieve notifications from retry queue to resend

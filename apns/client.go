@@ -1,4 +1,4 @@
-package gunfish
+package apns
 
 import (
 	"bytes"
@@ -8,40 +8,37 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"time"
 
-	"github.com/Sirupsen/logrus"
 	"golang.org/x/net/http2"
 )
 
-// ApnsClient is Client
-type ApnsClient struct {
-	host   string
-	client *http.Client
+const (
+	// HTTP2 client timeout
+	HTTP2ClientTimeout = time.Second * 10
+)
+
+// Client is apns client
+type Client struct {
+	Host   string
+	Client *http.Client
 }
 
-// NewApnsClient returns ApnsClient
-func NewApnsClient(host string, c *http.Client) ApnsClient {
-	return ApnsClient{
-		host:   host,
-		client: c,
-	}
-}
-
-// SendToApns sends notifications to apns
-func (ac *ApnsClient) SendToApns(req Request) (*Response, error) {
-	nreq, err := ac.NewRequest(req.Token, &req.Header, req.Payload)
+// Send sends notifications to apns
+func (ac *Client) Send(n Notification) (*Response, error) {
+	req, err := ac.NewRequest(n.Token, &n.Header, n.Payload)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := ac.client.Do(nreq)
+	res, err := ac.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer res.Body.Close()
 
 	ret := &Response{
-		ApnsID:     res.Header.Get("apns-id"),
+		APNsID:     res.Header.Get("apns-id"),
 		StatusCode: res.StatusCode,
 	}
 
@@ -50,24 +47,12 @@ func (ac *ApnsClient) SendToApns(req Request) (*Response, error) {
 		body, err := ioutil.ReadAll(res.Body)
 		// ioutil Error
 		if err != nil {
-			LogWithFields(logrus.Fields{
-				"type": "http/2-client",
-			}).Error(err)
 			return ret, err
 		}
 		// Unmarshal Error
 		if err := json.Unmarshal(body, &er); err != nil {
-			LogWithFields(logrus.Fields{
-				"type": "http/2-client",
-				"body": string(body),
-			}).Error(err)
 			return ret, err
 		}
-		LogWithFields(logrus.Fields{
-			"type": "http/2-client",
-			"body": string(body),
-		}).Warnf("Catch error response.")
-
 		return ret, &er
 	}
 
@@ -75,8 +60,8 @@ func (ac *ApnsClient) SendToApns(req Request) (*Response, error) {
 }
 
 // NewRequest creates request for apns
-func (ac *ApnsClient) NewRequest(token string, h *Header, payload Payload) (*http.Request, error) {
-	u, err := url.Parse(fmt.Sprintf("%s/3/device/%s", ac.host, token))
+func (ac *Client) NewRequest(token string, h *Header, payload Payload) (*http.Request, error) {
+	u, err := url.Parse(fmt.Sprintf("%s/3/device/%s", ac.Host, token))
 	if err != nil {
 		return nil, err
 	}

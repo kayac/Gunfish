@@ -1,4 +1,4 @@
-package gunfish
+package apns
 
 import (
 	"crypto/tls"
@@ -11,12 +11,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"golang.org/x/net/http2"
 )
 
+const (
+	ApplicationJSON        = "application/json"
+	LimitApnsTokenByteSize = 100 // Payload byte size.
+)
+
 // StartAPNSMockServer starts HTTP/2 server for mock
-func StartAPNSMockServer(config Config) {
+func StartAPNSMockServer(cert, key string) {
 	// Create TLSlistener
 	s := http.Server{}
 	s.Addr = ":2195"
@@ -32,7 +36,7 @@ func StartAPNSMockServer(config Config) {
 
 	var err error
 	tlsConf.Certificates = make([]tls.Certificate, 1)
-	tlsConf.Certificates[0], err = tls.LoadX509KeyPair(config.Apns.CertFile, config.Apns.KeyFile)
+	tlsConf.Certificates[0], err = tls.LoadX509KeyPair(cert, key)
 	if err != nil {
 		return
 	}
@@ -43,11 +47,6 @@ func StartAPNSMockServer(config Config) {
 	}
 
 	tlsListener := tls.NewListener(ln, tlsConf)
-
-	// Set Handlers
-	LogWithFields(logrus.Fields{
-		"type": "apns_mock",
-	}).Info("Starts APNS mock server.")
 
 	http.HandleFunc("/3/device/", func(w http.ResponseWriter, r *http.Request) {
 		// sets the response time from apns server
@@ -98,8 +97,8 @@ func StartAPNSMockServer(config Config) {
 }
 
 // StopAPNSServer stops APNS Mock server
-func StopAPNSServer(config Config) error {
-	client, err := NewConnection(config.Apns.CertFile, config.Apns.CertFile, config.Apns.SkipInsecure)
+func StopAPNSServer(cert, key string, insecure bool) error {
+	client, err := NewConnection(cert, key, insecure)
 	if err != nil {
 		return err
 	}
