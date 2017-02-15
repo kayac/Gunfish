@@ -75,21 +75,6 @@ func (s *Supervisor) EnqueueClientRequest(reqs *[]Request) error {
 	return nil
 }
 
-// EnqueueAPNSRequest send Request for APNS to workers.
-func (s *Supervisor) EnqueueAPNSRequest(reqs *[]Request) {
-	logf := logrus.Fields{
-		"type":             "supervisor",
-		"queue_size":       len(s.queue),
-		"request_size":     len(*reqs),
-		"retry_queue_size": len(s.retryq),
-	}
-
-	select {
-	case s.queue <- reqs:
-		LogWithFields(logf).Debugf("Enqueue superviso request queue")
-	}
-}
-
 // StartSupervisor starts supervisor
 func StartSupervisor(conf *Config) (Supervisor, error) {
 	// Calculates each worker queue size to accept requests with a given parameter of requests per sec as flow rate.
@@ -373,16 +358,24 @@ func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.Wait
 	atomic.AddInt64(&(srvStats.Senders), 1)
 	for req := range wq {
 		// TODO: switch by Notification type
-		noti := req.Notification.(apns.Notification)
-		start := time.Now()
-		res, err := ac.Send(noti)
-		respTime := time.Now().Sub(start).Seconds()
-		sres := SenderResponse{
-			Res:      res,
-			RespTime: respTime,
-			Req:      req, // Must copy
-			Err:      err,
-			UID:      uuid.NewV4().String(),
+		var sres SenderResponse
+		switch t := req.Notification.(type) {
+		case apns.Notification:
+			no := req.Notification.(apns.Notification)
+			start := time.Now()
+			res, err := ac.Send(no)
+			respTime := time.Now().Sub(start).Seconds()
+			sres = SenderResponse{
+				Res:      res,
+				RespTime: respTime,
+				Req:      req, // Must copy
+				Err:      err,
+				UID:      uuid.NewV4().String(),
+			}
+		default:
+			LogWithFields(logrus.Fields{"type": "sender"}).
+				Errorf("Unknown request data type: %s", t)
+			continue
 		}
 
 		select {
