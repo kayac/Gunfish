@@ -44,7 +44,6 @@ func (gc *Client) Send(p Payload) (*Response, error) {
 	}
 	resp.Header.StatusCode = res.StatusCode
 
-	// TODO: should handle 20x as error
 	if res.StatusCode != http.StatusOK {
 		errCode := resp.Body.Error
 		eres := ErrorResponse{
