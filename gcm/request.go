@@ -2,7 +2,7 @@ package gcm
 
 // Payload for gcm
 type Payload struct {
-	To                    string        `json:"to,omitempty"`
+	To                    string        `json:"to"`
 	RegistrationIDs       []string      `json:"registration_ids,omitempty"`
 	CollapseKey           string        `json:"collapse_key,omitempty"`
 	Priority              string        `json:"priority,omitempty"`
