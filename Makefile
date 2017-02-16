@@ -23,6 +23,7 @@ gen-cert:
 test: gen-cert
 	nohup h2o -c conf/h2o/h2o.conf > h2o_access.log &
 	go test -v ./apns || ( pkill h2o && exit 1 )
+	go test -v ./gcm || ( pkill h2o && exit 1 )
 	go test -v . || ( pkill h2o && exit 1 )
 	pkill h2o
 
