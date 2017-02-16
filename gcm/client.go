@@ -11,14 +11,15 @@ import (
 
 // gcm Client const variables
 const (
-	GCMClientTimeout = time.Second * 10
-	GCMEndpoint      = "https://fcm.googleapis.com/fcm/send"
+	GCMClientTimeout   = time.Second * 10
+	DefaultGCMEndpoint = "https://fcm.googleapis.com/fcm/send"
 )
 
 // Client is GCM client
 type Client struct {
-	apiKey string
-	Client *http.Client
+	endpoint string
+	apiKey   string
+	Client   *http.Client
 }
 
 // Send sends notifications to gcm (TODO: send retry)
@@ -55,7 +56,7 @@ func (gc *Client) Send(p Payload) (*Response, error) {
 
 // NewRequest creates request for gcm
 func (gc *Client) NewRequest(p Payload) (*http.Request, error) {
-	u, err := url.Parse(GCMEndpoint)
+	u, err := url.Parse(gc.endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -76,13 +77,21 @@ func (gc *Client) NewRequest(p Payload) (*http.Request, error) {
 }
 
 // NewClient establishes a http connection with gcm
-func NewClient(apikey string) *Client {
+func NewClient(apikey string, endpoint string) *Client {
 	client := &http.Client{
 		Timeout: GCMClientTimeout,
 	}
 
-	return &Client{
+	gc := &Client{
 		apiKey: apikey,
 		Client: client,
 	}
+
+	if endpoint != "" {
+		gc.endpoint = endpoint
+	} else {
+		gc.endpoint = DefaultGCMEndpoint
+	}
+
+	return gc
 }
