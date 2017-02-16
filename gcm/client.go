@@ -2,14 +2,11 @@ package gcm
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"time"
-
-	"golang.org/x/net/http2"
 )
 
 // gcm Client const variables
@@ -79,20 +76,9 @@ func (gc *Client) NewRequest(p Payload) (*http.Request, error) {
 }
 
 // NewClient establishes a http connection with gcm
-func NewClient(apikey string, insecure bool) (*Client, error) {
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: insecure,
-		},
-	}
-
-	if err := http2.ConfigureTransport(tr); err != nil {
-		return nil, err
-	}
-
+func NewClient(apikey string) (*Client, error) {
 	client := &http.Client{
-		Transport: tr,
-		Timeout:   GCMClientTimeout,
+		Timeout: GCMClientTimeout,
 	}
 
 	return &Client{
