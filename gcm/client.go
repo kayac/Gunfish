@@ -76,7 +76,7 @@ func (gc *Client) NewRequest(p Payload) (*http.Request, error) {
 }
 
 // NewClient establishes a http connection with gcm
-func NewClient(apikey string) (*Client, error) {
+func NewClient(apikey string) *Client {
 	client := &http.Client{
 		Timeout: GCMClientTimeout,
 	}
@@ -84,5 +84,5 @@ func NewClient(apikey string) (*Client, error) {
 	return &Client{
 		apiKey: apikey,
 		Client: client,
-	}, nil
+	}
 }
