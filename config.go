@@ -109,5 +109,9 @@ func (c Config) validateConfig() error {
 		return fmt.Errorf("ErrorHook cannot be empty.")
 	}
 
+	if c.GCM.APIKey == "" {
+		return fmt.Errorf("GCM api_key was not set")
+	}
+
 	return nil
 }
