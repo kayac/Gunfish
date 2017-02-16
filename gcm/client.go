@@ -11,7 +11,6 @@ import (
 
 // gcm Client const variables
 const (
-	GCMClientTimeout   = time.Second * 10
 	DefaultGCMEndpoint = "https://fcm.googleapis.com/fcm/send"
 )
 
@@ -77,9 +76,9 @@ func (gc *Client) NewRequest(p Payload) (*http.Request, error) {
 }
 
 // NewClient establishes a http connection with gcm
-func NewClient(apikey string, endpoint string) *Client {
+func NewClient(apikey string, endpoint string, timeout time.Duration) *Client {
 	client := &http.Client{
-		Timeout: GCMClientTimeout,
+		Timeout: timeout,
 	}
 
 	gc := &Client{
