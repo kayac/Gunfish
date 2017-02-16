@@ -6,12 +6,12 @@ import (
 
 // ErrorResponse is gcm error response
 type ErrorResponse struct {
-	ErrCode    string
+	ErrCodes   []string
 	StatusCode int
 }
 
 func (er ErrorResponse) Error() string {
-	return fmt.Sprintf("%s:[http_status:%d]", er.ErrCode, er.StatusCode)
+	return fmt.Sprintf("%v:[http_status:%d]", er.ErrCodes, er.StatusCode)
 }
 
 // Response is the gcm connection server response
