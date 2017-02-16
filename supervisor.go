@@ -277,24 +277,45 @@ func (s *Supervisor) spawnWorker(w Worker, conf *Config) {
 func (w *Worker) receiveResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Command) {
 	req := resp.Req
 
-	// TODO: switch notification type
-	noti := req.Notification.(apns.Notification)
-	res := resp.Res.(*apns.Response)
-
-	// initialize logrus fields
-	logf := logrus.Fields{
-		"type":           "worker",
-		"status":         "-",
-		"apns_id":        "-",
-		"token":          noti.Token,
-		"payload":        noti.Payload,
-		"worker_id":      w.id,
-		"res_queue_size": len(w.respq),
-		"resend_cnt":     req.Tries,
-		"response_time":  resp.RespTime,
-		"resp_uid":       resp.UID,
+	switch t := req.Notification.(type) {
+	case apns.Notification:
+		no := req.Notification.(apns.Notification)
+		logf := logrus.Fields{
+			"type":           "worker",
+			"status":         "-",
+			"apns_id":        "-",
+			"token":          no.Token,
+			"payload":        no.Payload,
+			"worker_id":      w.id,
+			"res_queue_size": len(w.respq),
+			"resend_cnt":     req.Tries,
+			"response_time":  resp.RespTime,
+			"resp_uid":       resp.UID,
+		}
+		handleAPNsResponse(resp, retryq, cmdq, logf)
+	case gcm.Payload:
+		p := req.Notification.(gcm.Payload)
+		logf := logrus.Fields{
+			"type":           "worker",
+			"reg_ids_length": len(p.RegistrationIDs),
+			"notification":   p.Notification,
+			"data":           p.Data,
+			"worker_id":      w.id,
+			"res_queue_size": len(w.respq),
+			"resend_cnt":     req.Tries,
+			"response_time":  resp.RespTime,
+			"resp_uid":       resp.UID,
+		}
+		handleGCMResponse(resp, retryq, cmdq, logf)
+	default:
+		LogWithFields(logrus.Fields{"type": "worker"}).Infof("Unknown request type:", t)
 	}
 
+}
+
+func handleAPNsResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Command, logf logrus.Fields) {
+	req := resp.Req
+	res := resp.Res.(*apns.Response)
 	// Response handling
 	if resp.Err != nil {
 		atomic.AddInt64(&(srvStats.ErrCount), 1)
@@ -339,6 +360,31 @@ func (w *Worker) receiveResponse(resp SenderResponse, retryq chan<- Request, cmd
 	}
 }
 
+func handleGCMResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Command, logf logrus.Fields) {
+	res := resp.Res.(*gcm.Response)
+	if res == nil {
+		LogWithFields(logf).Warnf("response is nil. reason: %s", resp.Err.Error())
+		return
+	}
+
+	logf["results"] = res.Body.Results
+	for _, result := range res.Body.Results {
+		// success when Error is nothing
+		if result.Error == "" {
+			continue
+		}
+		// handle error response each registration_id
+		atomic.AddInt64(&(srvStats.ErrCount), 1)
+		switch result.Error {
+		case gcm.InvalidRegistration.String():
+			// TODO: should delete registration_id from server data store
+			onResponse(resp, errorResponseHandler.HookCmd(), cmdq)
+		default:
+			LogWithFields(logf).Errorf("Unknown error message")
+		}
+	}
+}
+
 func (w *Worker) receiveRequests(reqs *[]Request) {
 	logf := logrus.Fields{
 		"type":              "worker",
@@ -360,7 +406,6 @@ func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.Wait
 	defer wgrp.Done()
 	atomic.AddInt64(&(srvStats.Senders), 1)
 	for req := range wq {
-		// TODO: switch by Notification type
 		var sres SenderResponse
 		switch t := req.Notification.(type) {
 		case apns.Notification:
