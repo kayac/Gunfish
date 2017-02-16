@@ -14,6 +14,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/kayac/Gunfish/apns"
+	"github.com/kayac/Gunfish/gcm"
 	"github.com/satori/go.uuid"
 )
 
@@ -31,6 +32,7 @@ type Supervisor struct {
 // Worker sends notification to apns.
 type Worker struct {
 	ac             *apns.Client
+	gc             *gcm.Client
 	queue          chan Request
 	respq          chan SenderResponse
 	wgrp           *sync.WaitGroup
@@ -174,6 +176,7 @@ func StartSupervisor(conf *Config) (Supervisor, error) {
 					Host:   conf.Apns.Host,
 					Client: c,
 				},
+				gc: gcm.NewClient(conf.GCM.APIKey),
 			}
 			LogWithFields(logrus.Fields{}).Infof("Response queue size: %d", cap(worker.respq))
 			LogWithFields(logrus.Fields{}).Infof("Worker Queue size: %d", cap(worker.queue))
@@ -251,7 +254,7 @@ func (s *Supervisor) spawnWorker(w Worker, conf *Config) {
 		}).Debugf("Spawned a sender-%d-%d.", w.id, i)
 
 		// spawnSender
-		go spawnSender(w.queue, w.respq, w.wgrp, w.ac)
+		go spawnSender(w.queue, w.respq, w.wgrp, w.ac, w.gc)
 	}
 
 	func() {
@@ -353,7 +356,7 @@ func (w *Worker) receiveRequests(reqs *[]Request) {
 	}
 }
 
-func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.WaitGroup, ac *apns.Client) {
+func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.WaitGroup, ac *apns.Client, gc *gcm.Client) {
 	defer wgrp.Done()
 	atomic.AddInt64(&(srvStats.Senders), 1)
 	for req := range wq {
@@ -369,6 +372,18 @@ func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.Wait
 				Res:      res,
 				RespTime: respTime,
 				Req:      req, // Must copy
+				Err:      err,
+				UID:      uuid.NewV4().String(),
+			}
+		case gcm.Payload:
+			p := req.Notification.(gcm.Payload)
+			start := time.Now()
+			res, err := gc.Send(p)
+			respTime := time.Now().Sub(start).Seconds()
+			sres = SenderResponse{
+				Res:      res,
+				RespTime: respTime,
+				Req:      req,
 				Err:      err,
 				UID:      uuid.NewV4().String(),
 			}
