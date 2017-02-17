@@ -12,7 +12,7 @@ checkout:
 
 dependencies:
   cache_directories:
-    - /$PROJECT_ROOT/h2o-$H2O_VERSION
+    - ~/go/src/github.com/kayac/Gunfish/h2o-1.6.3
   pre:
     - cd $PROJECT_ROOT && test/scripts/build_h2o.sh
   override:
