@@ -1,7 +1,10 @@
 #!/bin/bash
-version='2.1.0'
-wget https://github.com/h2o/h2o/archive/v$version.tar.gz
-tar xzf v$version.tar.gz
+version='1.6.3'
+
+if [ ! -d h2o-$version ] ; then
+    wget https://github.com/h2o/h2o/archive/v$version.tar.gz
+    tar xzf v$version.tar.gz
+fi
 cd h2o-$version
 
 insert_num=$(grep -n MRuby misc/mruby_config.rb | awk -F':' '{print $1}')
