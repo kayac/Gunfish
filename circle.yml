@@ -11,6 +11,8 @@ checkout:
     - rsync -azC --delete ./ $PROJECT_ROOT/
 
 dependencies:
+  cache_directories:
+    - h2o-$H2O_VERSION
   pre:
     - test/scripts/build_h2o.sh
   override:

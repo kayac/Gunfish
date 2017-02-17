@@ -10,4 +10,4 @@ sed -i "${insert_num} a ${insert_gem}"
 
 cmake -DWITH_BUNDLED_SSL=on .
 make
-make install
+sudo make install
