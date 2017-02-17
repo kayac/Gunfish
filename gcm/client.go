@@ -16,7 +16,7 @@ const (
 
 // Client is GCM client
 type Client struct {
-	endpoint string
+	endpoint *url.URL
 	apiKey   string
 	Client   *http.Client
 }
@@ -65,17 +65,13 @@ func (gc *Client) Send(p Payload) (*Response, error) {
 
 // NewRequest creates request for gcm
 func (gc *Client) NewRequest(p Payload) (*http.Request, error) {
-	u, err := url.Parse(gc.endpoint)
-	if err != nil {
-		return nil, err
-	}
 
 	data, err := json.Marshal(p)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", u.String(), bytes.NewReader(data))
+	req, err := http.NewRequest("POST", gc.endpoint.String(), bytes.NewReader(data))
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +82,7 @@ func (gc *Client) NewRequest(p Payload) (*http.Request, error) {
 }
 
 // NewClient establishes a http connection with gcm
-func NewClient(apikey string, endpoint string, timeout time.Duration) *Client {
+func NewClient(apikey string, endpoint *url.URL, timeout time.Duration) *Client {
 	client := &http.Client{
 		Timeout: timeout,
 	}
@@ -96,10 +92,11 @@ func NewClient(apikey string, endpoint string, timeout time.Duration) *Client {
 		Client: client,
 	}
 
-	if endpoint != "" {
+	if endpoint != nil {
 		gc.endpoint = endpoint
+
 	} else {
-		gc.endpoint = DefaultGCMEndpoint
+		gc.endpoint, _ = url.Parse(DefaultGCMEndpoint)
 	}
 
 	return gc
