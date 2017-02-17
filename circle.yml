@@ -1,0 +1,30 @@
+machine:
+  timezone: Asia/Tokyo
+  environment:
+    GOPATH: "${HOME}/go"
+    PATH: "${GOPATH}/bin:${PATH}"
+    PROJECT_ROOT: "${GOPATH}/src/github.com/kayac/Gunfish"
+
+checkout:
+  post:
+    - mkdir -p $PROJECT_ROOT
+    - rsync -azC --delete ./ $PROJECT_ROOT/
+
+dependencies:
+  pre:
+    - test/scripts/build_h2o.sh
+  override:
+    - cd $PROJECT_ROOT && make get-deps
+
+test:
+  override:
+    - cd $PROJECT_ROOT && make test
+
+deployment:
+  release:
+    tag: /v[0-9]+\.[0-9]+\.[0-9]+/
+    commands:
+      - go get github.com/tcnksm/ghr
+      - go get github.com/mitchellh/gox
+      - cd $PROJECT_ROOT && make packages
+      - ghr -t $GITHUB_TOKEN -u kayac -r $CIRCLE_PROJECT_REPONAME --replace $CIRCLE_TAG pkg
