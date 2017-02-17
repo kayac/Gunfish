@@ -12,9 +12,9 @@ checkout:
 
 dependencies:
   cache_directories:
-    - h2o-$H2O_VERSION
+    - /$PROJECT_ROOT/h2o-$H2O_VERSION
   pre:
-    - test/scripts/build_h2o.sh
+    - cd $PROJECT_ROOT && test/scripts/build_h2o.sh
   override:
     - cd $PROJECT_ROOT && make get-deps
 
