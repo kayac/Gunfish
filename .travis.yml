@@ -1,0 +1,35 @@
+language: go
+
+sudo: required
+
+notifications:
+  email: false
+
+env:
+  global:
+    - H2O_VERSION=1.6.3
+    - PROJECT_ROOT=$HOME/gopath/src/github.com/kayac/Gunfish
+
+go:
+  - 1.7.4
+  - 1.8
+
+addons:
+  apt:
+    sources:
+      - kalakris-cmake
+    packages:
+      - cmake
+
+install:
+  - cd $PROJECT_ROOT && ./test/scripts/build_h2o.sh
+  - cd $PROJECT_ROOT && make get-deps
+  - go get github.com/tcnksm/ghr
+  - go get github.com/mitchellh/gox
+
+script:
+  - make test
+
+cache:
+  directories:
+    - $PROJECT_ROOT/h2o-$H2O_VERSION

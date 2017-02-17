@@ -1,9 +1,10 @@
 #!/bin/bash
-set -eu
+set -xeu
 
 version='1.6.3'
 
-if [ ! -d h2o-$version ] ; then
+if [[ ! -f "h2o-$version/h2o" ]] ; then
+    rm -rf h2o-$version
     wget https://github.com/h2o/h2o/archive/v$version.tar.gz
     tar xzf v$version.tar.gz
 fi
