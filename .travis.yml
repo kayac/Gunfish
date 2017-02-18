@@ -30,6 +30,20 @@ install:
 script:
   - make test
 
+before_deploy:
+  - cd $PROJECT_ROOT && make packages
+
+deploy:
+  provider: releases
+  skip_cleanup: true
+  api_key: $GITHUB_TOKEN
+  file_glob: true
+  file:
+    - pkg/*.{zip}
+  on:
+    tags: true
+    go: 1.7.4
+
 cache:
   directories:
     - $PROJECT_ROOT/h2o-$H2O_VERSION
