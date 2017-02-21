@@ -41,26 +41,25 @@ func (gc *Client) Send(p Payload) (*Response, error) {
 	}
 	resp.Header.StatusCode = res.StatusCode
 
-	if res.StatusCode != http.StatusOK {
-		var errCodes []string
-		if resp.Body.Error != "" {
-			errCodes = append(errCodes, resp.Body.Error)
-		} else {
-			for _, msg := range resp.Body.Results {
-				if msg.Error != "" {
-					errCodes = append(errCodes, msg.Error)
-				}
-			}
-		}
-
-		eres := ErrorResponse{
-			StatusCode: resp.Header.StatusCode,
-			ErrCodes:   errCodes,
-		}
-		return nil, eres
+	if res.StatusCode == http.StatusOK {
+		return resp, err
 	}
 
-	return resp, err
+	var errCodes []string
+	if resp.Body.Error != "" {
+		errCodes = append(errCodes, resp.Body.Error)
+	} else {
+		for _, msg := range resp.Body.Results {
+			if msg.Error != "" {
+				errCodes = append(errCodes, msg.Error)
+			}
+		}
+	}
+	eres := ErrorResponse{
+		StatusCode: resp.Header.StatusCode,
+		ErrCodes:   errCodes,
+	}
+	return nil, eres
 }
 
 // NewRequest creates request for gcm
