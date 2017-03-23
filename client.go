@@ -111,18 +111,7 @@ func (ac *ApnsClient) NewRequest(token string, h *Header, payload Payload) (*htt
 
 // NewConnection establishes a http2 connection
 func NewConnection(certFile, keyFile string, secuskip bool) (*http.Client, error) {
-	certPEMBlock, err := ioutil.ReadFile(certFile)
-	if err != nil {
-		return nil, err
-	}
-
-	keyPEMBlock, err := ioutil.ReadFile(keyFile)
-	if err != nil {
-		return nil, err
-	}
-
-	cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
-
+	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
 		return nil, err
 	}
