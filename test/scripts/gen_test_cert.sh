@@ -1,7 +1,10 @@
 #!/bin/bash
-set -e
+
 greadlink=$(which greadlink)
 readlink=${greadlink:-readlink}
+
+set -e
+
 script_path=$(dirname $($readlink -f $0))
 gen_path=$script_path/..
 #------------------------------------------------------------

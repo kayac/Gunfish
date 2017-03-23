@@ -1,7 +1,9 @@
 #!/bin/bash
-set -xeu
+
 gsed=$(which gsed)
 sed=${gsed:-sed}
+
+set -xeu
 
 version='1.6.3'
 
