@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
-script_path=$(dirname $(readlink -f $0))
+greadlink=$(which greadlink)
+readlink=${greadlink:-readlink}
+script_path=$(dirname $($readlink -f $0))
 gen_path=$script_path/..
 #------------------------------------------------------------
 # Creates secrete key

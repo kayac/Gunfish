@@ -1,5 +1,7 @@
 #!/bin/bash
 set -xeu
+gsed=$(which gsed)
+sed=${gsed:-sed}
 
 version='1.6.3'
 
@@ -12,7 +14,7 @@ cd h2o-$version
 
 insert_num=$(grep -n MRuby misc/mruby_config.rb | awk -F':' '{print $1}')
 insert_gem="conf.gem :git => 'https://github.com/matsumoto-r/mruby-sleep.git'"
-sed -i "${insert_num} a ${insert_gem}" misc/mruby_config.rb
+$sed -i "${insert_num} a ${insert_gem}" misc/mruby_config.rb
 
 cmake -DWITH_BUNDLED_SSL=on .
 make
