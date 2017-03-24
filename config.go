@@ -11,6 +11,7 @@ import (
 type Config struct {
 	Apns     SectionApns     `toml:apns`
 	Provider SectionProvider `toml:provider`
+	GCM      SectionGCM      `toml:gcm`
 }
 
 // SectionProvider is Gunfish provider configuration
@@ -32,6 +33,11 @@ type SectionApns struct {
 	SenderNum     int    `toml:"sender_num"`
 	RequestPerSec int    `toml:"request_per_sec"`
 	ErrorHook     string `toml:"error_hook"`
+}
+
+// SectionGCM is the configuration of gcm
+type SectionGCM struct {
+	APIKey string `toml:"api_key"`
 }
 
 // DefaultLoadConfig loads default /etc/gunfish.toml
@@ -101,6 +107,10 @@ func (c Config) validateConfig() error {
 
 	if c.Apns.ErrorHook == "" {
 		return fmt.Errorf("ErrorHook cannot be empty.")
+	}
+
+	if c.GCM.APIKey == "" {
+		return fmt.Errorf("GCM api_key was not set")
 	}
 
 	return nil
