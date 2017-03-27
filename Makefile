@@ -6,7 +6,7 @@ DATE:=$(shell date +%Y-%m-%dT%H:%M:%SZ)
 all: test
 
 install:
-	 cd cmd/gunfish && go build -ldflags "-X=main.version ${GIT_VER} -X main.buildDate ${DATE}"
+	 cd cmd/gunfish && go build -ldflags "-X main.version=${GIT_VER} -X main.buildDate=${DATE}"
 		install cmd/gunfish/gunfish ${GOPATH}/bin
 
 get-deps:

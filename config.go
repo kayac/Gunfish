@@ -1,7 +1,10 @@
 package gunfish
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/Sirupsen/logrus"
@@ -26,13 +29,14 @@ type SectionProvider struct {
 
 // SectionApns is the configure which is loaded from gunfish.toml
 type SectionApns struct {
-	Host          string
-	SkipInsecure  bool   `toml:"skip_insecure"`
-	CertFile      string `toml:"cert_file"`
-	KeyFile       string `toml:"key_file"`
-	SenderNum     int    `toml:"sender_num"`
-	RequestPerSec int    `toml:"request_per_sec"`
-	ErrorHook     string `toml:"error_hook"`
+	Host                string
+	SkipInsecure        bool   `toml:"skip_insecure"`
+	CertFile            string `toml:"cert_file"`
+	KeyFile             string `toml:"key_file"`
+	SenderNum           int    `toml:"sender_num"`
+	RequestPerSec       int    `toml:"request_per_sec"`
+	ErrorHook           string `toml:"error_hook"`
+	CertificateNotAfter time.Time
 }
 
 // SectionGCM is the configuration of gcm
@@ -72,7 +76,7 @@ func LoadConfig(fn string) (Config, error) {
 	}
 
 	// validates config parameters
-	if err := config.validateConfig(); err != nil {
+	if err := (&config).validateConfig(); err != nil {
 		LogWithFields(logrus.Fields{"type": "load_config"}).Error(err)
 		return config, err
 	}
@@ -80,9 +84,29 @@ func LoadConfig(fn string) (Config, error) {
 	return config, nil
 }
 
-func (c Config) validateConfig() error {
+func (c *Config) validateConfig() error {
 	if c.Apns.CertFile == "" || c.Apns.KeyFile == "" {
 		return fmt.Errorf("Not specified a cert or key file.")
+	}
+
+	// check certificate files and expiration
+	cert, err := tls.LoadX509KeyPair(c.Apns.CertFile, c.Apns.KeyFile)
+	if err != nil {
+		return fmt.Errorf("Invalid certificate pair for APNS: %s", err)
+	}
+	now := time.Now()
+	for _, _ct := range cert.Certificate {
+		ct, err := x509.ParseCertificate(_ct)
+		if err != nil {
+			return fmt.Errorf("Cannot parse X509 certificate")
+		}
+		if now.Before(ct.NotBefore) || now.After(ct.NotAfter) {
+			return fmt.Errorf("Certificate is expired. Subject: %s, NotBefore: %s, NotAfter: %s", ct.Subject, ct.NotBefore, ct.NotAfter)
+		}
+		if c.Apns.CertificateNotAfter.IsZero() || c.Apns.CertificateNotAfter.Before(ct.NotAfter) {
+			// hold minimum not after
+			c.Apns.CertificateNotAfter = ct.NotAfter
+		}
 	}
 
 	if c.Provider.RequestQueueSize < MinRequestSize || c.Provider.RequestQueueSize > MaxRequestSize {

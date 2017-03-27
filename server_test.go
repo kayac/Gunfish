@@ -111,7 +111,7 @@ func TestFailedToPostMalformedJson(t *testing.T) {
 func TestEnqueueTooManyRequest(t *testing.T) {
 	sup, _ := StartSupervisor(&config)
 	prov := &Provider{sup: sup}
-	srvStats = NewStats()
+	srvStats = NewStats(config)
 	handler := prov.pushAPNsHandler()
 
 	// When queue stack is full, return 503
@@ -176,7 +176,7 @@ func TestEnqueueTooManyRequest(t *testing.T) {
 func TestTooLargeRequest(t *testing.T) {
 	sup, _ := StartSupervisor(&config)
 	prov := &Provider{sup: sup}
-	srvStats = NewStats()
+	srvStats = NewStats(config)
 	handler := prov.pushAPNsHandler()
 
 	jsons := createJSONPostedData(MaxRequestSize + 1) // Too many requests
@@ -242,6 +242,7 @@ func TestUnsupportedMediaType(t *testing.T) {
 func TestStats(t *testing.T) {
 	sup, _ := StartSupervisor(&config)
 	prov := &Provider{sup: sup}
+	srvStats = NewStats(config)
 	pushh := prov.pushAPNsHandler()
 	statsh := prov.statsHandler()
 
@@ -270,6 +271,10 @@ func TestStats(t *testing.T) {
 
 	if !reflect.DeepEqual(srvStats, resStat) {
 		t.Errorf("Expected total conenctions \"%v\" but got \"%v\"", srvStats, resStat)
+	}
+
+	if resStat.CertificateExpireUntil < 0 {
+		t.Errorf("Certificate expired %s %d", resStat.CertificateNotAfter, resStat.CertificateExpireUntil)
 	}
 
 	sup.Shutdown()

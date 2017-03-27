@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/kayac/Gunfish.svg?branch=master)](https://travis-ci.org/kayac/Gunfish)
+
 # Gunfish
 APNS provider server on HTTP/2.
 

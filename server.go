@@ -62,7 +62,7 @@ func StartServer(conf Config, env Environment) {
 	}
 
 	// Init Provider
-	srvStats = NewStats()
+	srvStats = NewStats(conf)
 	prov := &Provider{}
 
 	srvStats.DebugPort = conf.Provider.DebugPort
