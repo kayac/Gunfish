@@ -32,7 +32,7 @@ type Supervisor struct {
 // Worker sends notification to apns.
 type Worker struct {
 	ac             *apns.Client
-	gc             *fcm.Client
+	fc             *fcm.Client
 	queue          chan Request
 	respq          chan SenderResponse
 	wgrp           *sync.WaitGroup
@@ -176,7 +176,7 @@ func StartSupervisor(conf *Config) (Supervisor, error) {
 					Host:   conf.Apns.Host,
 					Client: c,
 				},
-				gc: fcm.NewClient(conf.FCM.APIKey, nil, fcm.ClientTimeout),
+				fc: fcm.NewClient(conf.FCM.APIKey, nil, fcm.ClientTimeout),
 			}
 			LogWithFields(logrus.Fields{}).Infof("Response queue size: %d", cap(worker.respq))
 			LogWithFields(logrus.Fields{}).Infof("Worker Queue size: %d", cap(worker.queue))
@@ -254,7 +254,7 @@ func (s *Supervisor) spawnWorker(w Worker, conf *Config) {
 		}).Debugf("Spawned a sender-%d-%d.", w.id, i)
 
 		// spawnSender
-		go spawnSender(w.queue, w.respq, w.wgrp, w.ac, w.gc)
+		go spawnSender(w.queue, w.respq, w.wgrp, w.ac, w.fc)
 	}
 
 	func() {
