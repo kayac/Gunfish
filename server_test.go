@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/kayac/Gunfish/apns"
 )
 
 func init() {
@@ -34,7 +35,7 @@ func TestInvalidCertification(t *testing.T) {
 func TestSuccessToPostJson(t *testing.T) {
 	sup, _ := StartSupervisor(&config)
 	prov := &Provider{sup: sup}
-	handler := prov.pushHandler()
+	handler := prov.pushAPNsHandler()
 
 	// application/json
 	jsons := createJSONPostedData(3)
@@ -68,7 +69,7 @@ func TestSuccessToPostJson(t *testing.T) {
 func TestFailedToPostMalformedJson(t *testing.T) {
 	sup, _ := StartSupervisor(&config)
 	prov := &Provider{sup: sup}
-	handler := prov.pushHandler()
+	handler := prov.pushAPNsHandler()
 
 	jsons := []string{
 		`{"test":"test"}`,
@@ -111,7 +112,7 @@ func TestEnqueueTooManyRequest(t *testing.T) {
 	sup, _ := StartSupervisor(&config)
 	prov := &Provider{sup: sup}
 	srvStats = NewStats(config)
-	handler := prov.pushHandler()
+	handler := prov.pushAPNsHandler()
 
 	// When queue stack is full, return 503
 	var manyNum int
@@ -176,7 +177,7 @@ func TestTooLargeRequest(t *testing.T) {
 	sup, _ := StartSupervisor(&config)
 	prov := &Provider{sup: sup}
 	srvStats = NewStats(config)
-	handler := prov.pushHandler()
+	handler := prov.pushAPNsHandler()
 
 	jsons := createJSONPostedData(MaxRequestSize + 1) // Too many requests
 	r, err := newRequest(jsons, "POST", ApplicationJSON)
@@ -196,7 +197,7 @@ func TestTooLargeRequest(t *testing.T) {
 func TestMethodNotAllowd(t *testing.T) {
 	sup, _ := StartSupervisor(&config)
 	prov := &Provider{sup: sup}
-	handler := prov.pushHandler()
+	handler := prov.pushAPNsHandler()
 
 	jsons := createJSONPostedData(1)
 	w := httptest.NewRecorder()
@@ -216,7 +217,7 @@ func TestMethodNotAllowd(t *testing.T) {
 func TestUnsupportedMediaType(t *testing.T) {
 	sup, _ := StartSupervisor(&config)
 	prov := &Provider{sup: sup}
-	handler := prov.pushHandler()
+	handler := prov.pushAPNsHandler()
 
 	jsons := createPostedData(1)
 	r, err := http.NewRequest(
@@ -242,7 +243,7 @@ func TestStats(t *testing.T) {
 	sup, _ := StartSupervisor(&config)
 	prov := &Provider{sup: sup}
 	srvStats = NewStats(config)
-	pushh := prov.pushHandler()
+	pushh := prov.pushAPNsHandler()
 	statsh := prov.statsHandler()
 
 	// Updates stat
@@ -307,10 +308,10 @@ func createPostedData(num int) []byte {
 		tokens[i] = fmt.Sprintf("%032d", i)
 	}
 	for i, v := range tokens {
-		payload := Payload{}
+		payload := apns.Payload{}
 
-		payload.APS = &APS{
-			Alert: Alert{
+		payload.APS = &apns.APS{
+			Alert: apns.Alert{
 				Title: "test",
 				Body:  "message",
 			},

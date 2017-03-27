@@ -12,3 +12,6 @@ cert_file = "./test/server.crt"
 sender_num = 50
 request_per_sec = 2000
 error_hook = "cat "
+
+[gcm]
+api_key = 'gcm_test_api_key'

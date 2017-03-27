@@ -15,6 +15,8 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/fukata/golang-stats-api-handler"
+	"github.com/kayac/Gunfish/apns"
+	"github.com/kayac/Gunfish/gcm"
 	"github.com/lestrrat/go-server-starter/listener"
 	"github.com/shogo82148/go-gracedown"
 	"golang.org/x/net/netutil"
@@ -29,7 +31,7 @@ type Provider struct {
 // ResponseHandler provides you to implement handling on success or on error response from apns.
 // Therefore, you can specifies hook command which is set at toml file.
 type ResponseHandler interface {
-	OnResponse(*Request, *Response, error)
+	OnResponse(Request, Response, error)
 	HookCmd() string
 }
 
@@ -39,7 +41,7 @@ type DefaultResponseHandler struct {
 }
 
 // OnResponse is performed when to receive response from APNS.
-func (rh DefaultResponseHandler) OnResponse(req *Request, res *Response, err error) {
+func (rh DefaultResponseHandler) OnResponse(req Request, res Response, err error) {
 }
 
 // HookCmd returns hook command to execute after getting response from APNS
@@ -135,7 +137,8 @@ func StartServer(conf Config, env Environment) {
 	}).Infof("Starts provider on :%d ...", conf.Provider.Port)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/push/apns", prov.pushHandler())
+	mux.HandleFunc("/push/apns", prov.pushAPNsHandler())
+	mux.HandleFunc("/push/gcm", prov.pushGCMHandler())
 	mux.HandleFunc("/stats/app", prov.statsHandler())
 	mux.HandleFunc("/stats/profile", stats_api.Handler)
 
@@ -152,15 +155,13 @@ func StartServer(conf Config, env Environment) {
 	sup.Shutdown()
 }
 
-func (prov *Provider) pushHandler() http.HandlerFunc {
+func (prov *Provider) pushAPNsHandler() http.HandlerFunc {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		atomic.AddInt64(&(srvStats.RequestCount), 1)
 
 		// Method Not Alllowed
-		if req.Method != "POST" {
-			res.WriteHeader(http.StatusMethodNotAllowed)
-			fmt.Fprintf(res, "{\"reason\":\"Method Not Allowed.\"}")
-			logrus.Warnf("Method Not Allowed: %s", req.Method)
+		if err := validateMethod(res, req); err != nil {
+			logrus.Warn(err)
 			return
 		}
 
@@ -204,16 +205,18 @@ func (prov *Provider) pushHandler() http.HandlerFunc {
 		for i, p := range ps {
 			switch t := p.Payload.Alert.(type) {
 			case map[string]interface{}:
-				var alert Alert
+				var alert apns.Alert
 				mapToAlert(t, &alert)
 				p.Payload.Alert = alert
 			}
 
 			req := Request{
-				Header:  p.Header,
-				Token:   p.Token,
-				Payload: p.Payload,
-				Tries:   0,
+				Notification: apns.Notification{
+					Header:  p.Header,
+					Token:   p.Token,
+					Payload: p.Payload,
+				},
+				Tries: 0,
 			}
 
 			reqs[i] = req
@@ -221,12 +224,7 @@ func (prov *Provider) pushHandler() http.HandlerFunc {
 
 		// enqueues one request into supervisor's queue.
 		if err := prov.sup.EnqueueClientRequest(&reqs); err != nil {
-			atomic.StoreInt64(&(srvStats.ServiceUnavailableAt), time.Now().Unix())
-			updateRetryAfterStat(time.Now().Unix() - srvStats.ServiceUnavailableAt)
-			// Retry-After is set seconds
-			res.Header().Set("Retry-After", fmt.Sprintf("%d", srvStats.RetryAfter))
-			res.WriteHeader(http.StatusServiceUnavailable)
-			fmt.Fprintf(res, fmt.Sprintf(`{"reason":"%s"}`, err.Error()))
+			setRetryAfter(res, req, err.Error())
 			return
 		}
 
@@ -234,6 +232,72 @@ func (prov *Provider) pushHandler() http.HandlerFunc {
 		res.WriteHeader(http.StatusOK)
 		fmt.Fprint(res, "{\"result\": \"ok\"}")
 	})
+}
+
+func (prov *Provider) pushGCMHandler() http.HandlerFunc {
+	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		atomic.AddInt64(&(srvStats.RequestCount), 1)
+
+		// Method Not Alllowed
+		if err := validateMethod(res, req); err != nil {
+			logrus.Warn(err)
+			return
+		}
+
+		// only Content-Type application/json
+		c := req.Header.Get("Content-Type")
+		if c != ApplicationJSON {
+			// Unsupported Media Type
+			logrus.Warnf("Unsupported Media Type: %s", c)
+			res.WriteHeader(http.StatusUnsupportedMediaType)
+			fmt.Fprintf(res, `{"reason":"Unsupported Media Type"}`)
+			return
+		}
+
+		// create request for gcm
+		var payload gcm.Payload
+		dec := json.NewDecoder(req.Body)
+		if err := dec.Decode(&payload); err != nil {
+			logrus.Warnf("Internal Server Error: %s", err)
+			res.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(res, "{\"reason\":\"%s\"}", err.Error())
+		}
+		grs := []Request{
+			Request{
+				Notification: payload,
+				Tries:        0,
+			},
+		}
+
+		// enqueues one request into supervisor's queue.
+		if err := prov.sup.EnqueueClientRequest(&grs); err != nil {
+			setRetryAfter(res, req, err.Error())
+			return
+		}
+
+		// success
+		res.WriteHeader(http.StatusOK)
+		fmt.Fprint(res, "{\"result\": \"ok\"}")
+	})
+}
+
+func validateMethod(res http.ResponseWriter, req *http.Request) error {
+	if req.Method != "POST" {
+		res.WriteHeader(http.StatusMethodNotAllowed)
+		fmt.Fprintf(res, "{\"reason\":\"Method Not Allowed.\"}")
+		return fmt.Errorf("Method Not Allowed: %s", req.Method)
+	}
+	return nil
+}
+
+func setRetryAfter(res http.ResponseWriter, req *http.Request, reason string) {
+	now := time.Now().Unix()
+	atomic.StoreInt64(&(srvStats.ServiceUnavailableAt), now)
+	updateRetryAfterStat(now - srvStats.ServiceUnavailableAt)
+	// Retry-After is set seconds
+	res.Header().Set("Retry-After", fmt.Sprintf("%d", srvStats.RetryAfter))
+	res.WriteHeader(http.StatusServiceUnavailable)
+	fmt.Fprintf(res, fmt.Sprintf(`{"reason":"%s"}`, reason))
 }
 
 func (prov *Provider) statsHandler() http.HandlerFunc {
@@ -291,7 +355,7 @@ func validateStatsHandler(res http.ResponseWriter, req *http.Request) bool {
 	return true
 }
 
-func mapToAlert(mapVal map[string]interface{}, alert *Alert) {
+func mapToAlert(mapVal map[string]interface{}, alert *apns.Alert) {
 	a := reflect.ValueOf(alert).Elem()
 	for k, v := range mapVal {
 		newk, ok := AlertKeyToField[k]

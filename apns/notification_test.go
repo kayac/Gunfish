@@ -1,4 +1,4 @@
-package gunfish
+package apns
 
 import (
 	"encoding/json"

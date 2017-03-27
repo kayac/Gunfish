@@ -3,7 +3,7 @@ DATE:=$(shell date +%Y-%m-%dT%H:%M:%SZ)
 
 .PHONY: test get-deps install clean
 
-all: test 
+all: test
 
 install:
 	 cd cmd/gunfish && go build -ldflags "-X main.version=${GIT_VER} -X main.buildDate=${DATE}"
@@ -17,12 +17,14 @@ packages:
 	cd cmd/gunfish && gox -os="linux darwin" -arch="amd64" -output "../../pkg/{{.Dir}}-${GIT_VER}-{{.OS}}-{{.Arch}}" -gcflags "-trimpath=${GOPATH}" -ldflags "-w -X main.version ${GIT_VER} -X main.buildDate ${DATE}"
 	cd pkg && find . -name "*${GIT_VER}*" -type f -exec zip {}.zip {} \;
 
-gen-cert:  
+gen-cert:
 	test/scripts/gen_test_cert.sh
 
 test: gen-cert
 	nohup h2o -c conf/h2o/h2o.conf > h2o_access.log &
-	go test -v
+	go test -v ./apns || ( pkill h2o && exit 1 )
+	go test -v ./gcm || ( pkill h2o && exit 1 )
+	go test -v . || ( pkill h2o && exit 1 )
 	pkill h2o
 
 clean:

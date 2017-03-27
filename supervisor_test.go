@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/kayac/Gunfish/apns"
 )
 
 var (
@@ -29,23 +30,24 @@ func (tr *TestResponseHandler) Countup(name string) {
 	*(tr.scoreboard[name])++
 }
 
-func (tr TestResponseHandler) OnResponse(req *Request, resp *Response, err error) {
+func (tr TestResponseHandler) OnResponse(req Request, resp Response, err error) {
+	areq := req.Notification.(apns.Notification)
 	tr.wg.Add(1)
 	if err != nil {
 		logrus.Warnf(err.Error())
-		if err.Error() == MissingTopic.String() {
-			tr.Countup(MissingTopic.String())
+		if err.Error() == apns.MissingTopic.String() {
+			tr.Countup(apns.MissingTopic.String())
 		}
-		if err.Error() == BadDeviceToken.String() {
-			tr.Countup(BadDeviceToken.String())
+		if err.Error() == apns.BadDeviceToken.String() {
+			tr.Countup(apns.BadDeviceToken.String())
 		}
-		if err.Error() == Unregistered.String() {
-			tr.Countup(Unregistered.String())
+		if err.Error() == apns.Unregistered.String() {
+			tr.Countup(apns.Unregistered.String())
 		}
 	} else {
 		tr.Countup("success")
 	}
-	tr.Done(req.Token)
+	tr.Done(areq.Token)
 }
 
 func (tr TestResponseHandler) HookCmd() string {
@@ -82,7 +84,7 @@ func TestEnqueuRequestToSupervisor(t *testing.T) {
 	// Prepare
 	wg := sync.WaitGroup{}
 	score := make(map[string]*int, 4)
-	for _, v := range []string{MissingTopic.String(), BadDeviceToken.String(), Unregistered.String(), "success"} {
+	for _, v := range []string{apns.MissingTopic.String(), apns.BadDeviceToken.String(), apns.Unregistered.String(), "success"} {
 		x := 0
 		score[v] = &x
 	}
@@ -124,14 +126,14 @@ func TestEnqueuRequestToSupervisor(t *testing.T) {
 	wg.Wait()
 	sup.Shutdown()
 
-	if *(score[MissingTopic.String()]) != 1 {
-		t.Errorf("Expected MissingTopic count is 1 but got %d", *(score[MissingTopic.String()]))
+	if *(score[apns.MissingTopic.String()]) != 1 {
+		t.Errorf("Expected MissingTopic count is 1 but got %d", *(score[apns.MissingTopic.String()]))
 	}
-	if *(score[Unregistered.String()]) != 1 {
-		t.Errorf("Expected Unregistered count is 1 but got %d", *(score[Unregistered.String()]))
+	if *(score[apns.Unregistered.String()]) != 1 {
+		t.Errorf("Expected Unregistered count is 1 but got %d", *(score[apns.Unregistered.String()]))
 	}
-	if *(score[BadDeviceToken.String()]) != 1 {
-		t.Errorf("Expected BadDeviceToken count is 1 but got %d", *(score[BadDeviceToken.String()]))
+	if *(score[apns.BadDeviceToken.String()]) != 1 {
+		t.Errorf("Expected BadDeviceToken count is 1 but got %d", *(score[apns.BadDeviceToken.String()]))
 	}
 	if *(score["success"]) != 70 {
 		t.Errorf("Expected success count is 70 but got %d", *(score["success"]))
@@ -142,20 +144,22 @@ func repeatRequestData(token string, num int) []Request {
 	var reqs []Request
 	for i := 0; i < num; i++ {
 		// Create request
-		aps := &APS{
-			Alert: &Alert{
+		aps := &apns.APS{
+			Alert: &apns.Alert{
 				Title: "test",
 				Body:  "message",
 			},
 			Sound: "default",
 		}
-		payload := Payload{}
+		payload := apns.Payload{}
 		payload.APS = aps
 
 		req := Request{
-			Token:   token,
-			Payload: payload,
-			Tries:   0,
+			Notification: apns.Notification{
+				Token:   token,
+				Payload: payload,
+			},
+			Tries: 0,
 		}
 
 		reqs = append(reqs, req)
@@ -166,27 +170,29 @@ func repeatRequestData(token string, num int) []Request {
 func TestSuccessOrFailureInvoke(t *testing.T) {
 	// prepare SenderResponse
 	token := "invalid token"
-	sre := fmt.Errorf(Unregistered.String())
-	aps := &APS{
-		Alert: Alert{
+	sre := fmt.Errorf(apns.Unregistered.String())
+	aps := &apns.APS{
+		Alert: apns.Alert{
 			Title: "test",
 			Body:  "hoge message",
 		},
 		Badge: 1,
 		Sound: "default",
 	}
-	payload := Payload{}
+	payload := apns.Payload{}
 	payload.APS = aps
 
 	sr := SenderResponse{
-		Res: &Response{
-			ApnsID:     "apns-id-hoge",
+		Res: &apns.Response{
+			APNsID:     "apns-id-hoge",
 			StatusCode: 410,
 		},
 		Req: Request{
-			Token:   token,
-			Payload: payload,
-			Tries:   0,
+			Notification: apns.Notification{
+				Token:   token,
+				Payload: payload,
+			},
+			Tries: 0,
 		},
 		RespTime: 0.0,
 		Err:      sre,
