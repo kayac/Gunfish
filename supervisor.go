@@ -176,7 +176,7 @@ func StartSupervisor(conf *Config) (Supervisor, error) {
 					Host:   conf.Apns.Host,
 					Client: c,
 				},
-				gc: gcm.NewClient(conf.GCM.APIKey),
+				gc: gcm.NewClient(conf.GCM.APIKey, nil, gcm.ClientTimeout),
 			}
 			LogWithFields(logrus.Fields{}).Infof("Response queue size: %d", cap(worker.respq))
 			LogWithFields(logrus.Fields{}).Infof("Worker Queue size: %d", cap(worker.queue))
@@ -319,7 +319,7 @@ func handleAPNsResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Co
 	// Response handling
 	if resp.Err != nil {
 		atomic.AddInt64(&(srvStats.ErrCount), 1)
-		if resp.Res != nil {
+		if res != nil {
 			logf["status"] = fmt.Sprint(res.StatusCode)
 			logf["apns_id"] = res.APNsID
 

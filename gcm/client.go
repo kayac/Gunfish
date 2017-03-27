@@ -12,6 +12,7 @@ import (
 // gcm Client const variables
 const (
 	DefaultGCMEndpoint = "https://fcm.googleapis.com/fcm/send"
+	ClientTimeout      = time.Second * 10
 )
 
 // Client is GCM client
