@@ -14,7 +14,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/kayac/Gunfish/apns"
-	"github.com/kayac/Gunfish/gcm"
+	"github.com/kayac/Gunfish/fcm"
 	"github.com/satori/go.uuid"
 )
 
@@ -32,7 +32,7 @@ type Supervisor struct {
 // Worker sends notification to apns.
 type Worker struct {
 	ac             *apns.Client
-	gc             *gcm.Client
+	gc             *fcm.Client
 	queue          chan Request
 	respq          chan SenderResponse
 	wgrp           *sync.WaitGroup
@@ -176,7 +176,7 @@ func StartSupervisor(conf *Config) (Supervisor, error) {
 					Host:   conf.Apns.Host,
 					Client: c,
 				},
-				gc: gcm.NewClient(conf.GCM.APIKey, nil, gcm.ClientTimeout),
+				gc: fcm.NewClient(conf.FCM.APIKey, nil, fcm.ClientTimeout),
 			}
 			LogWithFields(logrus.Fields{}).Infof("Response queue size: %d", cap(worker.respq))
 			LogWithFields(logrus.Fields{}).Infof("Worker Queue size: %d", cap(worker.queue))
@@ -293,8 +293,8 @@ func (w *Worker) receiveResponse(resp SenderResponse, retryq chan<- Request, cmd
 			"resp_uid":       resp.UID,
 		}
 		handleAPNsResponse(resp, retryq, cmdq, logf)
-	case gcm.Payload:
-		p := req.Notification.(gcm.Payload)
+	case fcm.Payload:
+		p := req.Notification.(fcm.Payload)
 		logf := logrus.Fields{
 			"type":           "worker",
 			"reg_ids_length": len(p.RegistrationIDs),
@@ -306,7 +306,7 @@ func (w *Worker) receiveResponse(resp SenderResponse, retryq chan<- Request, cmd
 			"response_time":  resp.RespTime,
 			"resp_uid":       resp.UID,
 		}
-		handleGCMResponse(resp, retryq, cmdq, logf)
+		handleFCMResponse(resp, retryq, cmdq, logf)
 	default:
 		LogWithFields(logrus.Fields{"type": "worker"}).Infof("Unknown request type:", t)
 	}
@@ -360,8 +360,8 @@ func handleAPNsResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Co
 	}
 }
 
-func handleGCMResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Command, logf logrus.Fields) {
-	res := resp.Res.(*gcm.Response)
+func handleFCMResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Command, logf logrus.Fields) {
+	res := resp.Res.(*fcm.Response)
 	if res == nil {
 		LogWithFields(logf).Warnf("response is nil. reason: %s", resp.Err.Error())
 		return
@@ -376,7 +376,7 @@ func handleGCMResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Com
 		// handle error response each registration_id
 		atomic.AddInt64(&(srvStats.ErrCount), 1)
 		switch result.Error {
-		case gcm.InvalidRegistration.String():
+		case fcm.InvalidRegistration.String():
 			// TODO: should delete registration_id from server data store
 			onResponse(resp, errorResponseHandler.HookCmd(), cmdq)
 		default:
@@ -402,7 +402,7 @@ func (w *Worker) receiveRequests(reqs *[]Request) {
 	}
 }
 
-func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.WaitGroup, ac *apns.Client, gc *gcm.Client) {
+func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.WaitGroup, ac *apns.Client, gc *fcm.Client) {
 	defer wgrp.Done()
 	atomic.AddInt64(&(srvStats.Senders), 1)
 	for req := range wq {
@@ -420,8 +420,8 @@ func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.Wait
 				Err:      err,
 				UID:      uuid.NewV4().String(),
 			}
-		case gcm.Payload:
-			p := req.Notification.(gcm.Payload)
+		case fcm.Payload:
+			p := req.Notification.(fcm.Payload)
 			start := time.Now()
 			res, err := gc.Send(p)
 			respTime := time.Now().Sub(start).Seconds()

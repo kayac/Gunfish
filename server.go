@@ -16,7 +16,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/fukata/golang-stats-api-handler"
 	"github.com/kayac/Gunfish/apns"
-	"github.com/kayac/Gunfish/gcm"
+	"github.com/kayac/Gunfish/fcm"
 	"github.com/lestrrat/go-server-starter/listener"
 	"github.com/shogo82148/go-gracedown"
 	"golang.org/x/net/netutil"
@@ -138,7 +138,7 @@ func StartServer(conf Config, env Environment) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/push/apns", prov.pushAPNsHandler())
-	mux.HandleFunc("/push/gcm", prov.pushGCMHandler())
+	mux.HandleFunc("/push/fcm", prov.pushFCMHandler())
 	mux.HandleFunc("/stats/app", prov.statsHandler())
 	mux.HandleFunc("/stats/profile", stats_api.Handler)
 
@@ -234,7 +234,7 @@ func (prov *Provider) pushAPNsHandler() http.HandlerFunc {
 	})
 }
 
-func (prov *Provider) pushGCMHandler() http.HandlerFunc {
+func (prov *Provider) pushFCMHandler() http.HandlerFunc {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		atomic.AddInt64(&(srvStats.RequestCount), 1)
 
@@ -254,8 +254,8 @@ func (prov *Provider) pushGCMHandler() http.HandlerFunc {
 			return
 		}
 
-		// create request for gcm
-		var payload gcm.Payload
+		// create request for fcm
+		var payload fcm.Payload
 		dec := json.NewDecoder(req.Body)
 		if err := dec.Decode(&payload); err != nil {
 			logrus.Warnf("Internal Server Error: %s", err)

@@ -14,7 +14,7 @@ import (
 type Config struct {
 	Apns     SectionApns     `toml:apns`
 	Provider SectionProvider `toml:provider`
-	GCM      SectionGCM      `toml:gcm`
+	FCM      SectionFCM      `toml:fcm`
 }
 
 // SectionProvider is Gunfish provider configuration
@@ -39,8 +39,8 @@ type SectionApns struct {
 	CertificateNotAfter time.Time
 }
 
-// SectionGCM is the configuration of gcm
-type SectionGCM struct {
+// SectionFCM is the configuration of fcm
+type SectionFCM struct {
 	APIKey string `toml:"api_key"`
 }
 
@@ -133,8 +133,8 @@ func (c *Config) validateConfig() error {
 		return fmt.Errorf("ErrorHook cannot be empty.")
 	}
 
-	if c.GCM.APIKey == "" {
-		return fmt.Errorf("GCM api_key was not set")
+	if c.FCM.APIKey == "" {
+		return fmt.Errorf("FCM api_key was not set")
 	}
 
 	return nil
