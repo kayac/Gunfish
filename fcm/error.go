@@ -1,11 +1,11 @@
-package gcm
+package fcm
 
-type GCMErrorResponseCode int
+type FCMErrorResponseCode int
 
 // Error const variables
 const (
 	// 200 + error
-	MissingRegistration GCMErrorResponseCode = iota
+	MissingRegistration FCMErrorResponseCode = iota
 	InvalidRegistration
 	NotRegistered
 	InvalidPackageName

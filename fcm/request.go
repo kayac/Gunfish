@@ -1,6 +1,6 @@
-package gcm
+package fcm
 
-// Payload for gcm
+// Payload for fcm
 type Payload struct {
 	To                    string        `json:"to,omitempty"`
 	RegistrationIDs       []string      `json:"registration_ids,omitempty"`
@@ -15,10 +15,10 @@ type Payload struct {
 	Notification          *Notification `json:"notification,omitempty"`
 }
 
-// Data is payload of gcm message
+// Data is payload of fcm message
 type Data map[string]interface{}
 
-// Notification is payload of a GCM message
+// Notification is payload of a FCM message
 type Notification struct {
 	Title        string `json:"title,omitempty"`
 	Body         string `json:"body,omitempty"`
