@@ -27,7 +27,7 @@ const (
 	// SendRetryCount is the threashold which is resend count.
 	SendRetryCount = 10
 	// RetryWaitTime is periodical time to retrieve notifications from retry queue to resend
-	RetryWaitTime = time.Millisecond * 500
+	RetryWaitTime = time.Millisecond * 5000
 	// RetryOnceCount is the number of sending notification at once.
 	RetryOnceCount = 1000
 	// Default multiplicity of sending notifications to apns. If not configures
@@ -44,6 +44,8 @@ const (
 	AverageResponseTime = time.Millisecond * 150
 	// Minimum RetryAfter time (seconds).
 	RetryAfterSecond = time.Second * 10
+	// Retry wait time incremental rate for exponential backoff
+	RetryWaitIncrRate = 1.1
 	// Gunfish returns RetryAfter header based on 'Exponential Backoff'. Therefore,
 	// that defines the wait time threshold so as not to wait too long.
 	ResetRetryAfterSecond = time.Second * 60
