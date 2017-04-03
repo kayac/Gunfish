@@ -166,7 +166,6 @@ func StartSupervisor(conf *Config) (Supervisor, error) {
 				"type":      "worker",
 				"worker_id": i,
 			}).Infoln("Succeeded to establish new connection.")
-
 			worker := Worker{
 				id:    i,
 				queue: make(chan Request, wqSize),
@@ -364,6 +363,29 @@ func handleAPNsResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Co
 }
 
 func handleFCMResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Command, logf logrus.Fields) {
+	if resp.Err != nil {
+		req := resp.Req
+		LogWithFields(logf).Warnf("response is nil. reason: %s", resp.Err.Error())
+		if req.Tries < SendRetryCount {
+			req.Tries++
+			atomic.AddInt64(&(srvStats.RetryCount), 1)
+			logf["resend_cnt"] = req.Tries
+
+			select {
+			case retryq <- req:
+				LogWithFields(logf).
+					Debugf("Retry to enqueue into retryq because of http connection error with FCM.")
+			default:
+				LogWithFields(logf).
+					Warnf("Supervisor retry queue is full.")
+			}
+		} else {
+			LogWithFields(logf).
+				Warnf("Retry count is over than %d. Could not deliver notification.", SendRetryCount)
+		}
+		return
+	}
+
 	for _, result := range resp.Results {
 		// success when Error is nothing
 		err := result.Err()

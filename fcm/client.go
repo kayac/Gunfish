@@ -22,7 +22,7 @@ type Client struct {
 	Client   *http.Client
 }
 
-// Send sends notifications to fcm (TODO: send retry)
+// Send sends notifications to fcm
 func (c *Client) Send(p Payload) ([]Result, error) {
 	req, err := c.NewRequest(p)
 	if err != nil {
@@ -44,13 +44,12 @@ func (c *Client) Send(p Payload) ([]Result, error) {
 	if res.StatusCode != http.StatusOK {
 		return nil, NewError(res.StatusCode, "status is not OK")
 	}
-
 	if len(p.RegistrationIDs) == 0 && len(body.Results) == 1 {
 		r := body.Results[0]
 		r.To = p.To
 		r.StatusCode = res.StatusCode
 		return []Result{r}, nil
-	} else if len(p.RegistrationIDs) == len(body.Results) {
+	} else if len(p.RegistrationIDs) > 0 && len(p.RegistrationIDs) == len(body.Results) {
 		ret := make([]Result, 0, len(body.Results))
 		for i, r := range body.Results {
 			r.RegistrationID = p.RegistrationIDs[i]
