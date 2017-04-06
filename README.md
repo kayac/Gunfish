@@ -49,21 +49,21 @@ payload | APNS notification payload
 Post JSON example:
 ```json
 [
-    {
-        "payload": {
-            "aps": {
-                  "alert": "test notification",
-                  "sound": "default"
-            },
-            "option1": "foo",
-            "option2": "bar"
-        },
-        "token": "apns device token",
-        "header": {
-            "apns-id": "your apns id"
-            "apns-token": "your app bundle id"
-        }
+  {
+    "payload": {
+      "aps": {
+        "alert": "test notification",
+        "sound": "default"
+      },
+      "option1": "foo",
+      "option2": "bar"
+    },
+    "token": "apns device token",
+    "header": {
+      "apns-id": "your apns id",
+      "apns-token": "your app bundle id"
     }
+  }
 ]
 ```
 
@@ -156,7 +156,8 @@ for example JSON structure: (>= v0.2.x)
 {
   "provider": "fcm",
   "status": 200,
-  "registration_id": "8kMSTcfqrca:APA91bEfS-uC1WV374Mg83Lkn43",
+  "registration_id": "8kMSTcfqrca:APA91bEfS-uC1WV374Mg83Lkn43..",
+  // or "to": "8kMSTcfqrca:APA91bEfS-uC1WV374Mg83Lkn43..",
   "error": "InvalidRegistration"
 }
 ```
