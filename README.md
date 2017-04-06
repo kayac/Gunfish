@@ -194,7 +194,7 @@ type CustomYourErrorHandler struct {
     hookCmd string
 }
 
-func (ch CustomYourErrorHandler) OnResponse( req *Request, res *Response, err error ){
+func (ch CustomYourErrorHandler) OnResponse(result Result){
     // ...
 }
 
