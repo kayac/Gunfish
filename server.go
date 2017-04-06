@@ -31,7 +31,7 @@ type Provider struct {
 // ResponseHandler provides you to implement handling on success or on error response from apns.
 // Therefore, you can specifies hook command which is set at toml file.
 type ResponseHandler interface {
-	OnResponse(Request, Response, error)
+	OnResponse(Result)
 	HookCmd() string
 }
 
@@ -40,8 +40,8 @@ type DefaultResponseHandler struct {
 	hook string
 }
 
-// OnResponse is performed when to receive response from APNS.
-func (rh DefaultResponseHandler) OnResponse(req Request, res Response, err error) {
+// OnResponse is performed when to receive result from APNs or FCM.
+func (rh DefaultResponseHandler) OnResponse(result Result) {
 }
 
 // HookCmd returns hook command to execute after getting response from APNS

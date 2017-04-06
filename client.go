@@ -2,5 +2,5 @@ package gunfish
 
 // Client interface for fcm and apns client
 type Client interface {
-	Send(Notification) (*Response, error)
+	Send(Notification) ([]Result, error)
 }

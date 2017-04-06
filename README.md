@@ -49,21 +49,21 @@ payload | APNS notification payload
 Post JSON example:
 ```json
 [
-    {
-        "payload": {
-            "aps": {
-                  "alert": "test notification",
-                  "sound": "default"
-            },
-            "option1": "foo",
-            "option2": "bar"
-        },
-        "token": "apns device token",
-        "header": {
-            "apns-id": "your apns id"
-            "apns-token": "your app bundle id"
-        }
+  {
+    "payload": {
+      "aps": {
+        "alert": "test notification",
+        "sound": "default"
+      },
+      "option1": "foo",
+      "option2": "bar"
+    },
+    "token": "apns device token",
+    "header": {
+      "apns-id": "your apns id",
+      "apns-token": "your app bundle id"
     }
+  }
 ]
 ```
 
@@ -139,33 +139,56 @@ error_hook       |optional| Error hook command. This command runs when Gunfish c
 
 Error hook command can get an each error response with JSON format by STDIN.
 
-for example JSON structure:
+for example JSON structure: (>= v0.2.x)
+```json5
+// APNs
+{
+  "provider": "apns",
+  "apns-id": "123e4567-e89b-12d3-a456-42665544000",
+  "status": 400,
+  "token": "9fe817acbcef8173fb134d8a80123cba243c8376af83db8caf310daab1f23003",
+  "reason": "MissingTopic"
+}
+```
+
+```json5
+// FCM
+{
+  "provider": "fcm",
+  "status": 200,
+  "registration_id": "8kMSTcfqrca:APA91bEfS-uC1WV374Mg83Lkn43..",
+  // or "to": "8kMSTcfqrca:APA91bEfS-uC1WV374Mg83Lkn43..",
+  "error": "InvalidRegistration"
+}
+```
+
+(~ v0.1.x)
 ```json
 {
   "response": {
- "apns-id": "",
- "status": 400
+    "apns-id": "",
+    "status": 400
   },
   "response_time": 0.633673848,
   "request": {
- "header": {},
- "token": "9fe817acbcef8173fb134d8a80123cba243c8376af83db8caf310daab1f23003",
- "payload": {
-   "aps": {
-     "alert": "error alert test",
-     "badge": 1,
-     "sound": "default"
-   },
-   "Optional": {
-     "option1": "hoge",
-     "option2": "hoge"
-   }
- },
- "tries": 0
+    "header": {},
+    "token": "9fe817acbcef8173fb134d8a80123cba243c8376af83db8caf310daab1f23003",
+    "payload": {
+      "aps": {
+        "alert": "error alert test",
+        "badge": 1,
+        "sound": "default"
+      },
+      "Optional": {
+        "option1": "hoge",
+        "option2": "hoge"
+      }
+    },
+    "tries": 0
   },
   "error_msg": {
- "reason": "MissingTopic",
- "timestamp": 0
+    "reason": "MissingTopic",
+    "timestamp": 0
   }
 }
 ```
@@ -194,7 +217,7 @@ type CustomYourErrorHandler struct {
     hookCmd string
 }
 
-func (ch CustomYourErrorHandler) OnResponse( req *Request, res *Response, err error ){
+func (ch CustomYourErrorHandler) OnResponse(result Result){
     // ...
 }
 

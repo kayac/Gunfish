@@ -25,7 +25,7 @@ type Client struct {
 }
 
 // Send sends notifications to apns
-func (ac *Client) Send(n Notification) (*Response, error) {
+func (ac *Client) Send(n Notification) ([]Result, error) {
 	req, err := ac.NewRequest(n.Token, &n.Header, n.Payload)
 	if err != nil {
 		return nil, err
@@ -37,23 +37,22 @@ func (ac *Client) Send(n Notification) (*Response, error) {
 	}
 	defer res.Body.Close()
 
-	ret := &Response{
-		APNsID:     res.Header.Get("apns-id"),
-		StatusCode: res.StatusCode,
+	ret := []Result{
+		Result{
+			APNsID:     res.Header.Get("apns-id"),
+			StatusCode: res.StatusCode,
+			Token:      n.Token,
+		},
 	}
 
 	if res.StatusCode != http.StatusOK {
 		var er ErrorResponse
-		body, err := ioutil.ReadAll(res.Body)
-		// ioutil Error
+		err := json.NewDecoder(res.Body).Decode(&er)
 		if err != nil {
-			return ret, err
+			ret[0].Reason = err.Error()
+		} else {
+			ret[0].Reason = er.Reason
 		}
-		// Unmarshal Error
-		if err := json.Unmarshal(body, &er); err != nil {
-			return ret, err
-		}
-		return ret, &er
 	}
 
 	return ret, nil

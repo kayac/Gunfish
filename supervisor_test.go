@@ -30,10 +30,9 @@ func (tr *TestResponseHandler) Countup(name string) {
 	*(tr.scoreboard[name])++
 }
 
-func (tr TestResponseHandler) OnResponse(req Request, resp Response, err error) {
-	areq := req.Notification.(apns.Notification)
+func (tr TestResponseHandler) OnResponse(result Result) {
 	tr.wg.Add(1)
-	if err != nil {
+	if err := result.Err(); err != nil {
 		logrus.Warnf(err.Error())
 		if err.Error() == apns.MissingTopic.String() {
 			tr.Countup(apns.MissingTopic.String())
@@ -47,7 +46,7 @@ func (tr TestResponseHandler) OnResponse(req Request, resp Response, err error) 
 	} else {
 		tr.Countup("success")
 	}
-	tr.Done(areq.Token)
+	tr.Done(result.RecipientIdentifier())
 }
 
 func (tr TestResponseHandler) HookCmd() string {
@@ -181,12 +180,7 @@ func TestSuccessOrFailureInvoke(t *testing.T) {
 	}
 	payload := apns.Payload{}
 	payload.APS = aps
-
 	sr := SenderResponse{
-		Res: &apns.Response{
-			APNsID:     "apns-id-hoge",
-			StatusCode: 410,
-		},
 		Req: Request{
 			Notification: apns.Notification{
 				Token:   token,

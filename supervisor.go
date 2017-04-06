@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"sync"
@@ -38,13 +39,13 @@ type Worker struct {
 	wgrp           *sync.WaitGroup
 	sn             int
 	id             int
-	errorHandler   func(Request, Response, error)
-	successHandler func(Request, Response)
+	errorHandler   func(Request, *http.Response, error)
+	successHandler func(Request, *http.Response)
 }
 
 // SenderResponse is responses to worker from sender.
 type SenderResponse struct {
-	Res      Response `json:"response"`
+	Results  []Result `json:"response"`
 	RespTime float64  `json:"response_time"`
 	Req      Request  `json:"request"`
 	Err      error    `json:"error_msg"`
@@ -165,7 +166,6 @@ func StartSupervisor(conf *Config) (Supervisor, error) {
 				"type":      "worker",
 				"worker_id": i,
 			}).Infoln("Succeeded to establish new connection.")
-
 			worker := Worker{
 				id:    i,
 				queue: make(chan Request, wqSize),
@@ -315,19 +315,22 @@ func (w *Worker) receiveResponse(resp SenderResponse, retryq chan<- Request, cmd
 
 func handleAPNsResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Command, logf logrus.Fields) {
 	req := resp.Req
-	res := resp.Res.(*apns.Response)
+
 	// Response handling
 	if resp.Err != nil {
 		atomic.AddInt64(&(srvStats.ErrCount), 1)
-		if res != nil {
-			logf["status"] = fmt.Sprint(res.StatusCode)
-			logf["apns_id"] = res.APNsID
-
+		if len(resp.Results) > 0 {
+			result := resp.Results[0]
+			for _, key := range result.ExtraKeys() {
+				logf[key] = result.ExtraValue(key)
+			}
+			logf["status"] = result.Status()
 			LogWithFields(logf).Errorf("%s", resp.Err)
+			// Error handling
+			onResponse(result, errorResponseHandler.HookCmd(), cmdq)
 		} else {
-			// if 'res' is nil,  HTTP connection error with APNS.
+			// if 'result' is nil, HTTP connection error with APNS.
 			LogWithFields(logf).Warnf("response is nil. reason: %s", resp.Err.Error())
-
 			if req.Tries < SendRetryCount {
 				req.Tries++
 				atomic.AddInt64(&(srvStats.RetryCount), 1)
@@ -346,41 +349,58 @@ func handleAPNsResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Co
 					Warnf("Retry count is over than %d. Could not deliver notification.", SendRetryCount)
 			}
 		}
-		// Error handling
-		onResponse(resp, errorResponseHandler.HookCmd(), cmdq)
 	} else {
 		atomic.AddInt64(&(srvStats.SentCount), 1)
-		logf["status"] = fmt.Sprint(res.StatusCode)
-		logf["apns_id"] = res.APNsID
-
+		if len(resp.Results) > 0 {
+			result := resp.Results[0]
+			for _, key := range result.ExtraKeys() {
+				logf[key] = result.ExtraValue(key)
+			}
+			onResponse(result, "", cmdq)
+		}
 		LogWithFields(logf).Info("Succeeded to send a notification")
-
-		// Success handling
-		onResponse(resp, "", cmdq) // success response handling does not execute hook command
 	}
 }
 
 func handleFCMResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Command, logf logrus.Fields) {
-	res := resp.Res.(*fcm.Response)
-	if res == nil {
+	if resp.Err != nil {
+		req := resp.Req
 		LogWithFields(logf).Warnf("response is nil. reason: %s", resp.Err.Error())
+		if req.Tries < SendRetryCount {
+			req.Tries++
+			atomic.AddInt64(&(srvStats.RetryCount), 1)
+			logf["resend_cnt"] = req.Tries
+
+			select {
+			case retryq <- req:
+				LogWithFields(logf).
+					Debugf("Retry to enqueue into retryq because of http connection error with FCM.")
+			default:
+				LogWithFields(logf).
+					Warnf("Supervisor retry queue is full.")
+			}
+		} else {
+			LogWithFields(logf).
+				Warnf("Retry count is over than %d. Could not deliver notification.", SendRetryCount)
+		}
 		return
 	}
 
-	logf["results"] = res.Body.Results
-	for _, result := range res.Body.Results {
+	for _, result := range resp.Results {
 		// success when Error is nothing
-		if result.Error == "" {
+		err := result.Err()
+		if err == nil {
+			atomic.AddInt64(&(srvStats.SentCount), 1)
+			LogWithFields(logf).Info("Succeeded to send a notification")
 			continue
 		}
 		// handle error response each registration_id
 		atomic.AddInt64(&(srvStats.ErrCount), 1)
-		switch result.Error {
-		case fcm.InvalidRegistration.String():
+		if err.Error() == fcm.InvalidRegistration.String() {
 			// TODO: should delete registration_id from server data store
-			onResponse(resp, errorResponseHandler.HookCmd(), cmdq)
-		default:
-			LogWithFields(logf).Errorf("Unknown error message")
+			onResponse(result, errorResponseHandler.HookCmd(), cmdq)
+		} else {
+			LogWithFields(logf).Errorf("Unknown error message: %s", err)
 		}
 	}
 }
@@ -402,7 +422,7 @@ func (w *Worker) receiveRequests(reqs *[]Request) {
 	}
 }
 
-func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.WaitGroup, ac *apns.Client, gc *fcm.Client) {
+func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.WaitGroup, ac *apns.Client, fc *fcm.Client) {
 	defer wgrp.Done()
 	atomic.AddInt64(&(srvStats.Senders), 1)
 	for req := range wq {
@@ -411,10 +431,14 @@ func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.Wait
 		case apns.Notification:
 			no := req.Notification.(apns.Notification)
 			start := time.Now()
-			res, err := ac.Send(no)
+			results, err := ac.Send(no)
 			respTime := time.Now().Sub(start).Seconds()
+			rs := make([]Result, 0, len(results))
+			for _, v := range results {
+				rs = append(rs, v)
+			}
 			sres = SenderResponse{
-				Res:      res,
+				Results:  rs,
 				RespTime: respTime,
 				Req:      req, // Must copy
 				Err:      err,
@@ -423,10 +447,14 @@ func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.Wait
 		case fcm.Payload:
 			p := req.Notification.(fcm.Payload)
 			start := time.Now()
-			res, err := gc.Send(p)
+			results, err := fc.Send(p)
 			respTime := time.Now().Sub(start).Seconds()
+			rs := make([]Result, 0, len(results))
+			for _, v := range results {
+				rs = append(rs, v)
+			}
 			sres = SenderResponse{
-				Res:      res,
+				Results:  rs,
 				RespTime: respTime,
 				Req:      req,
 				Err:      err,
@@ -457,39 +485,30 @@ func (s Supervisor) workersAllQueueLength() int {
 	return sum
 }
 
-func onResponse(resp SenderResponse, cmd string, cmdq chan<- Command) {
-	res := (resp.Res).(*apns.Response)
-	req := resp.Req
-	noti := req.Notification.(apns.Notification)
-
+func onResponse(result Result, cmd string, cmdq chan<- Command) {
 	logf := logrus.Fields{
-		"type":    "on_response",
-		"token":   noti.Token,
-		"payload": noti.Payload,
+		"provider": result.Provider(),
+		"type":     "on_response",
+		"token":    result.RecipientIdentifier(),
 	}
-
+	for _, key := range result.ExtraKeys() {
+		logf[key] = result.ExtraValue(key)
+	}
 	// on error handler
-	if resp.Err != nil {
-		errorResponseHandler.OnResponse(req, res, resp.Err)
+	if err := result.Err(); err != nil {
+		errorResponseHandler.OnResponse(result)
 	} else {
-		successResponseHandler.OnResponse(req, res, nil)
+		successResponseHandler.OnResponse(result)
 	}
 
-	// if resp.Res is nil (that is http layer error), not execute command.
-	// command string is empty when to succeed to send notification.
-	if cmd == "" || resp.Res == nil {
+	if cmd == "" {
 		return
 	}
 
-	jresp, err := json.Marshal(resp)
-	if err != nil {
-		LogWithFields(logf).Errorf(err.Error())
-		return
-	}
-
+	b, _ := json.Marshal(&result)
 	command := Command{
 		command: cmd,
-		input:   jresp,
+		input:   b,
 	}
 	select {
 	case cmdq <- command:
