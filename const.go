@@ -13,8 +13,6 @@ const (
 const (
 	MaxWorkerNum           = 119   // Maximum of worker number
 	MinWorkerNum           = 1     // Minimum of worker number
-	MaxSenderNum           = 150   // Maximum of sender number
-	MinSenderNum           = 1     // Minimum of sender number
 	MaxQueueSize           = 40960 // Maximum queue size.
 	MinQueueSize           = 128   // Minimum Queue size.
 	MaxRequestSize         = 5000  // Maximum of requset count.
@@ -30,9 +28,10 @@ const (
 	RetryWaitTime = time.Millisecond * 500
 	// RetryOnceCount is the number of sending notification at once.
 	RetryOnceCount = 1000
-	// Default multiplicity of sending notifications to apns. If not configures
-	// at file, this value is set.
-	DefaultApnsSenderNum = 20
+	// multiplicity of sending notifications.
+	SenderNum     = 20
+	RequestPerSec = 2000
+
 	// Default array size of posted data. If not configures at file, this value is set.
 	DefaultRequestQueueSize = 2000
 	// Default port number of provider server

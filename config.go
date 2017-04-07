@@ -12,9 +12,9 @@ import (
 
 // Config is the configure of an APNS provider server
 type Config struct {
-	Apns     SectionApns     `toml:apns`
-	Provider SectionProvider `toml:provider`
-	FCM      SectionFCM      `toml:fcm`
+	Apns     SectionApns     `toml:"apns"`
+	Provider SectionProvider `toml:"provider"`
+	FCM      SectionFCM      `toml:"fcm"`
 }
 
 // SectionProvider is Gunfish provider configuration
@@ -24,7 +24,8 @@ type SectionProvider struct {
 	RequestQueueSize int `toml:"max_request_size"`
 	Port             int `toml:"port"`
 	DebugPort        int
-	MaxConnections   int `toml:"max_connections"`
+	MaxConnections   int    `toml:"max_connections"`
+	ErrorHook        string `toml:"error_hook"`
 }
 
 // SectionApns is the configure which is loaded from gunfish.toml
@@ -33,15 +34,14 @@ type SectionApns struct {
 	SkipInsecure        bool   `toml:"skip_insecure"`
 	CertFile            string `toml:"cert_file"`
 	KeyFile             string `toml:"key_file"`
-	SenderNum           int    `toml:"sender_num"`
-	RequestPerSec       int    `toml:"request_per_sec"`
-	ErrorHook           string `toml:"error_hook"`
 	CertificateNotAfter time.Time
+	enabled             bool
 }
 
 // SectionFCM is the configuration of fcm
 type SectionFCM struct {
-	APIKey string `toml:"api_key"`
+	APIKey  string `toml:"api_key"`
+	enabled bool
 }
 
 // DefaultLoadConfig loads default /etc/gunfish.toml
@@ -67,10 +67,6 @@ func LoadConfig(fn string) (Config, error) {
 		config.Provider.QueueSize = DefaultQueueSize
 	}
 
-	if config.Apns.SenderNum == 0 {
-		config.Apns.SenderNum = DefaultApnsSenderNum
-	}
-
 	if config.Provider.Port == 0 {
 		config.Provider.Port = DefaultPort
 	}
@@ -85,10 +81,26 @@ func LoadConfig(fn string) (Config, error) {
 }
 
 func (c *Config) validateConfig() error {
-	if c.Apns.CertFile == "" || c.Apns.KeyFile == "" {
-		return fmt.Errorf("Not specified a cert or key file.")
+	if c.Apns.CertFile != "" && c.Apns.KeyFile != "" {
+		c.Apns.enabled = true
+		if err := c.validateConfigApns(); err != nil {
+			return err
+		}
 	}
+	if c.FCM.APIKey != "" {
+		c.FCM.enabled = true
+		if err := c.validateConfigFCM(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
+func (c *Config) validateConfigFCM() error {
+	return nil
+}
+
+func (c *Config) validateConfigApns() error {
 	// check certificate files and expiration
 	cert, err := tls.LoadX509KeyPair(c.Apns.CertFile, c.Apns.KeyFile)
 	if err != nil {
@@ -122,19 +134,6 @@ func (c *Config) validateConfig() error {
 	if c.Provider.WorkerNum < MinWorkerNum || c.Provider.WorkerNum > MaxWorkerNum {
 		return fmt.Errorf("WorkerNum was out of available range: %d. (%d-%d)", c.Provider.WorkerNum,
 			MinWorkerNum, MaxWorkerNum)
-	}
-
-	if c.Apns.SenderNum < MinSenderNum || c.Apns.SenderNum > MaxSenderNum {
-		return fmt.Errorf("APNS SenderNum was out of available range: %d. (%d-%d)", c.Apns.SenderNum,
-			MinSenderNum, MaxSenderNum)
-	}
-
-	if c.Apns.ErrorHook == "" {
-		return fmt.Errorf("ErrorHook cannot be empty.")
-	}
-
-	if c.FCM.APIKey == "" {
-		return fmt.Errorf("FCM api_key was not set")
 	}
 
 	return nil
