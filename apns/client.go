@@ -21,7 +21,7 @@ const (
 // Client is apns client
 type Client struct {
 	Host   string
-	Client *http.Client
+	client *http.Client
 }
 
 // Send sends notifications to apns
@@ -31,7 +31,7 @@ func (ac *Client) Send(n Notification) ([]Result, error) {
 		return nil, err
 	}
 
-	res, err := ac.Client.Do(req)
+	res, err := ac.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -125,5 +125,16 @@ func NewConnection(certFile, keyFile string, secuskip bool) (*http.Client, error
 	return &http.Client{
 		Timeout:   HTTP2ClientTimeout,
 		Transport: tr,
+	}, nil
+}
+
+func NewClient(host, cert, key string, skipInsecure bool) (*Client, error) {
+	c, err := NewConnection(cert, key, skipInsecure)
+	if err != nil {
+		return nil, err
+	}
+	return &Client{
+		Host:   host,
+		client: c,
 	}, nil
 }
