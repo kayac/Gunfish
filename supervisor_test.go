@@ -91,7 +91,7 @@ func TestEnqueuRequestToSupervisor(t *testing.T) {
 	etr := TestResponseHandler{
 		wg:         &wg,
 		scoreboard: score,
-		hook:       config.Apns.ErrorHook,
+		hook:       config.Provider.ErrorHook,
 	}
 	str := TestResponseHandler{
 		wg:         &wg,

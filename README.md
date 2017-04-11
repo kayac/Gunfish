@@ -81,14 +81,13 @@ stats type | description
 Pid | PID
 DebugPort | pprof port number
 Uptime | uptime of APNS provider server
-Workers | number of workers             
-Senders | number of senders 
+Workers | number of workers
 StartAt | The time of starting APNS provider server
 QueueSize | queue size of requests for Gunfish
 RetryQueueSize | queue size for resending notification
 WorkersQueueSize | summary of worker's queue size
-CommandQueueSize | error hook command queue size 
-RetryCount | summary of retry count 
+CommandQueueSize | error hook command queue size
+RetryCount | summary of retry count
 RequestCount | request count to gunfish
 ErrCount | count of recieving error response from APNs
 SentCount | count of sending notification to APNs
@@ -111,18 +110,19 @@ worker_num = 8
 queue_size = 2000
 max_request_size = 1000
 max_connections = 2000
+error_hook = "echo -e 'Hello Gunfish at error hook!'"
 
 [apns]
 skip_insecure = true
 key_file = "/path/to/server.key"
 cert_file = "/path/to/server.crt"
-sender_num = 50
-request_per_sec = 2000
-error_hook = "echo -e 'Hello Gunfish at error hook!'"
+
+[fcm]
+api_key = "API key for FCM"
 ```
 
 param            | status | description
----------------- | ------ | -------------------------------------------------------------------------------------- 
+---------------- | ------ | --------------------------------------------------------------------------------------
 port             |optional| Listen port number.
 worker_num       |optional| Number of Gunfish owns http clients.
 queue_size       |optional| Limit number of posted JSON from the developer application.
@@ -131,8 +131,6 @@ max_connections  |optional| Max connections
 skip_insecure    |optional| Controls whether a client verifies the server's certificate chain and host name.
 key_file         |required| The key file path.
 cert_file        |required| The cert file path.
-sender_num       |optional| Number of concurrency sending notification per http client.
-request_per_sec  |optional| Flow rate as notifications per sec no your application. (default: 2000).
 error_hook       |optional| Error hook command. This command runs when Gunfish catches an error response.
 
 ## Error Hook

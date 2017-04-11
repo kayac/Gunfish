@@ -116,8 +116,8 @@ func TestEnqueueTooManyRequest(t *testing.T) {
 
 	// When queue stack is full, return 503
 	var manyNum int
-	tp := ((config.Provider.RequestQueueSize * int(AverageResponseTime/time.Millisecond)) / 1000) / config.Apns.SenderNum
-	dif := (config.Apns.RequestPerSec - config.Provider.RequestQueueSize/tp)
+	tp := ((config.Provider.RequestQueueSize * int(AverageResponseTime/time.Millisecond)) / 1000) / SenderNum
+	dif := (RequestPerSec - config.Provider.RequestQueueSize/tp)
 	if dif > 0 {
 		manyNum = dif * int(FlowRateInterval/time.Second) * 2
 	} else {

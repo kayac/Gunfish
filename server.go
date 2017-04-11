@@ -58,7 +58,7 @@ func StartServer(conf Config, env Environment) {
 	}
 
 	if errorResponseHandler == nil {
-		InitErrorResponseHandler(DefaultResponseHandler{hook: conf.Apns.ErrorHook})
+		InitErrorResponseHandler(DefaultResponseHandler{hook: conf.Provider.ErrorHook})
 	}
 
 	// Init Provider
@@ -137,8 +137,18 @@ func StartServer(conf Config, env Environment) {
 	}).Infof("Starts provider on :%d ...", conf.Provider.Port)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/push/apns", prov.pushAPNsHandler())
-	mux.HandleFunc("/push/fcm", prov.pushFCMHandler())
+	if conf.Apns.enabled {
+		LogWithFields(logrus.Fields{
+			"type": "provider",
+		}).Infof("Enable endpoint /push/apns")
+		mux.HandleFunc("/push/apns", prov.pushAPNsHandler())
+	}
+	if conf.FCM.enabled {
+		LogWithFields(logrus.Fields{
+			"type": "provider",
+		}).Infof("Enable endpoint /push/fcm")
+		mux.HandleFunc("/push/fcm", prov.pushFCMHandler())
+	}
 	mux.HandleFunc("/stats/app", prov.statsHandler())
 	mux.HandleFunc("/stats/profile", stats_api.Handler)
 

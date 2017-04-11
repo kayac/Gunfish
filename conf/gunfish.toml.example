@@ -4,11 +4,12 @@ worker_num = 8
 queue_size = 2000
 max_request_size = 1000
 max_connections = 2000
+error_hook = "jq . >> error.hook"
 
 [apns]
 skip_insecure = true
-key_file = "/path/to/server.key"
-cert_file = "/path/to/server.crt"
-sender_num = 50
-request_per_sec = 2000
-error_hook = "echo -e 'Hello Gunfish at error hook!'"
+key_file = "test/server.key"
+cert_file = "test/server.crt"
+
+[fcm]
+api_key = "FCM_API_KEY"

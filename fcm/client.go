@@ -80,7 +80,7 @@ func (c *Client) NewRequest(p Payload) (*http.Request, error) {
 }
 
 // NewClient establishes a http connection with fcm
-func NewClient(apikey string, endpoint *url.URL, timeout time.Duration) *Client {
+func NewClient(apikey string, endpoint *url.URL, timeout time.Duration) (*Client, error) {
 	client := &http.Client{
 		Timeout: timeout,
 	}
@@ -92,10 +92,13 @@ func NewClient(apikey string, endpoint *url.URL, timeout time.Duration) *Client 
 
 	if endpoint != nil {
 		c.endpoint = endpoint
-
 	} else {
-		c.endpoint, _ = url.Parse(DefaultFCMEndpoint)
+		if ep, err := url.Parse(DefaultFCMEndpoint); err != nil {
+			return nil, err
+		} else {
+			c.endpoint = ep
+		}
 	}
 
-	return c
+	return c, nil
 }

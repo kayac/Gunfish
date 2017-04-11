@@ -15,7 +15,6 @@ type Stats struct {
 	Period                 int64     `json:"period"`
 	RetryAfter             int64     `json:"retry_after"`
 	Workers                int64     `json:"workers"`
-	Senders                int64     `json:"senders"`
 	QueueSize              int64     `json:"queue_size"`
 	RetryQueueSize         int64     `json:"retry_queue_size"`
 	WorkersQueueSize       int64     `json:"workers_queue_size"`

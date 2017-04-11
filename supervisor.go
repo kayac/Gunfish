@@ -82,8 +82,8 @@ func (s *Supervisor) EnqueueClientRequest(reqs *[]Request) error {
 func StartSupervisor(conf *Config) (Supervisor, error) {
 	// Calculates each worker queue size to accept requests with a given parameter of requests per sec as flow rate.
 	var wqSize int
-	tp := ((conf.Provider.RequestQueueSize * int(AverageResponseTime/time.Millisecond)) / 1000) / conf.Apns.SenderNum
-	dif := (conf.Apns.RequestPerSec - conf.Provider.RequestQueueSize/tp)
+	tp := ((conf.Provider.RequestQueueSize * int(AverageResponseTime/time.Millisecond)) / 1000) / SenderNum
+	dif := (RequestPerSec - conf.Provider.RequestQueueSize/tp)
 	if dif > 0 {
 		wqSize = dif * int(FlowRateInterval/time.Second) / conf.Provider.WorkerNum
 	} else {
@@ -154,41 +154,45 @@ func StartSupervisor(conf *Config) (Supervisor, error) {
 	// Spawn workers
 	var err error
 	for i := 0; i < conf.Provider.WorkerNum; i++ {
-		c, err := apns.NewConnection(conf.Apns.CertFile, conf.Apns.KeyFile, conf.Apns.SkipInsecure)
-
-		if err != nil {
-			LogWithFields(logrus.Fields{
-				"type": "supervisor",
-			}).Errorf("%s", err.Error())
-			break
-		} else {
-			LogWithFields(logrus.Fields{
-				"type":      "worker",
-				"worker_id": i,
-			}).Infoln("Succeeded to establish new connection.")
-			worker := Worker{
-				id:    i,
-				queue: make(chan Request, wqSize),
-				respq: make(chan SenderResponse, wqSize),
-				wgrp:  &sync.WaitGroup{},
-				sn:    conf.Apns.SenderNum,
-				ac: &apns.Client{
-					Host:   conf.Apns.Host,
-					Client: c,
-				},
-				fc: fcm.NewClient(conf.FCM.APIKey, nil, fcm.ClientTimeout),
+		var (
+			ac *apns.Client
+			fc *fcm.Client
+		)
+		if conf.Apns.enabled {
+			ac, err = apns.NewClient(conf.Apns.Host, conf.Apns.CertFile, conf.Apns.KeyFile, conf.Apns.SkipInsecure)
+			if err != nil {
+				LogWithFields(logrus.Fields{
+					"type": "supervisor",
+				}).Errorf("%s", err.Error())
+				break
 			}
-			LogWithFields(logrus.Fields{}).Infof("Response queue size: %d", cap(worker.respq))
-			LogWithFields(logrus.Fields{}).Infof("Worker Queue size: %d", cap(worker.queue))
-
-			s.workers = append(s.workers, &worker)
-			s.wgrp.Add(1)
-			go s.spawnWorker(worker, conf)
-			LogWithFields(logrus.Fields{
-				"type":      "worker",
-				"worker_id": i,
-			}).Debugf("Spawned worker-%d.", i)
 		}
+		if conf.FCM.enabled {
+			fc, err = fcm.NewClient(conf.FCM.APIKey, nil, fcm.ClientTimeout)
+			if err != nil {
+				LogWithFields(logrus.Fields{
+					"type": "supervisor",
+				}).Errorf("%s", err.Error())
+				break
+			}
+		}
+		worker := Worker{
+			id:    i,
+			queue: make(chan Request, wqSize),
+			respq: make(chan SenderResponse, wqSize),
+			wgrp:  &sync.WaitGroup{},
+			sn:    SenderNum,
+			ac:    ac,
+			fc:    fc,
+		}
+
+		s.workers = append(s.workers, &worker)
+		s.wgrp.Add(1)
+		go s.spawnWorker(worker, conf)
+		LogWithFields(logrus.Fields{
+			"type":      "worker",
+			"worker_id": i,
+		}).Debugf("Spawned worker-%d.", i)
 	}
 
 	if err != nil {
@@ -424,11 +428,15 @@ func (w *Worker) receiveRequests(reqs *[]Request) {
 
 func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.WaitGroup, ac *apns.Client, fc *fcm.Client) {
 	defer wgrp.Done()
-	atomic.AddInt64(&(srvStats.Senders), 1)
 	for req := range wq {
 		var sres SenderResponse
 		switch t := req.Notification.(type) {
 		case apns.Notification:
+			if ac == nil {
+				LogWithFields(logrus.Fields{"type": "sender"}).
+					Errorf("apns client is not present")
+				continue
+			}
 			no := req.Notification.(apns.Notification)
 			start := time.Now()
 			results, err := ac.Send(no)
@@ -445,6 +453,11 @@ func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.Wait
 				UID:      uuid.NewV4().String(),
 			}
 		case fcm.Payload:
+			if fc == nil {
+				LogWithFields(logrus.Fields{"type": "sender"}).
+					Errorf("fcm client is not present")
+				continue
+			}
 			p := req.Notification.(fcm.Payload)
 			start := time.Now()
 			results, err := fc.Send(p)
