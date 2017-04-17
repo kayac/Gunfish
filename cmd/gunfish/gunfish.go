@@ -22,7 +22,6 @@ func main() {
 		port        int
 		enablePprof bool
 		showVersion bool
-		senderNum   int
 		logLevel    string
 	)
 
@@ -35,7 +34,7 @@ func main() {
 	flag.BoolVar(&enablePprof, "enable-pprof", false, ".")
 	flag.BoolVar(&showVersion, "v", false, "show version number.")
 	flag.BoolVar(&showVersion, "version", false, "show version number.")
-	flag.IntVar(&senderNum, "sender-num", 0, "number of sender workers per http/2 client.")
+
 	flag.StringVar(&logLevel, "log-level", "info", "set the log level (debug, warn, info)")
 	flag.Parse()
 
@@ -54,10 +53,6 @@ func main() {
 	}
 
 	c.Provider.DebugPort = 0
-	if senderNum > 0 {
-		c.Apns.SenderNum = senderNum
-	}
-
 	if port != 0 {
 		c.Provider.Port = port // Default port number
 	}
