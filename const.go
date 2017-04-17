@@ -4,11 +4,6 @@ import (
 	"time"
 )
 
-// Version
-const (
-	Version = "v0.1.1"
-)
-
 // Limit values
 const (
 	MaxWorkerNum           = 119   // Maximum of worker number

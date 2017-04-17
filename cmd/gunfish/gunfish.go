@@ -14,6 +14,8 @@ import (
 	"github.com/kayac/Gunfish"
 )
 
+var version string
+
 func main() {
 	var (
 		config      string
@@ -40,7 +42,7 @@ func main() {
 
 	if showVersion {
 		fmt.Printf("Compiler: %s %s\n", runtime.Compiler, runtime.Version())
-		fmt.Printf("Gunfish version: %s\n", gunfish.Version)
+		fmt.Printf("Gunfish version: %s\n", version)
 		return
 	}
 
