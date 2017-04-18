@@ -26,7 +26,7 @@ option             | required | description
 -port              | Optional | Port number of Gunfish provider server. Default is `8003`.
 -environment, -E   | Optional | Default value is `production`.
 -conf, -c          | Optional | Please specify this option if you want to change `toml` config file path. (default: `/etc/gunfish/config.toml`.)
--log-level         | Optional | Set the log level as 'warn', 'info', or 'debug'. 
+-log-level         | Optional | Set the log level as 'warn', 'info', or 'debug'.
 -log-format        | Optional | Supports `json` or `ltsv` log formats.
 -enable-pprof      | Optional | You can set the flag of pprof debug port open.
 -sender-num        | Optional | Set number of concurrency sending notification per http client. That option overwrite config file's param.
@@ -37,7 +37,7 @@ option             | required | description
 
 To delivery remote notifications via APNS to user's devices.
 
-param | description 
+param | description
 --- | ---
 Array | Array of JSON dictionary includes 'token' and 'payload' properties
 
@@ -74,7 +74,7 @@ Response example:
 
 ### GET /stats/app
 
-To get the status of APNS proveder server. 
+To get the status of APNS proveder server.
 
 stats type | description
 --- | ---
@@ -94,13 +94,13 @@ SentCount | count of sending notification to APNs
 
 ### GET /stats/profile
 
-To get the status of go application. 
+To get the status of go application.
 
 See detail properties that url: (https://github.com/fukata/golang-stats-api-handler).
 
 ## Configuration
 The Gunfish configuration file is a TOML file that Gunfish server uses to configure itself.
-That configuration file should be located `/etc/gunfish.toml`, and is required to start. 
+That configuration file should be located `/etc/gunfish.toml`, and is required to start.
 Here is an example configuration:
 
 ```toml
@@ -207,7 +207,7 @@ $ start_server --port 38003 --pid-file gunfish.pid -- ./gunfish -c conf/gunfish.
 
 ### How to Implement Response Handlers
 
-If you have to handle something on error or on success, you should implement error or success handlers. 
+If you have to handle something on error or on success, you should implement error or success handlers.
 For example handlers you should implement is given below:
 
 ```go
@@ -235,7 +235,7 @@ You can implement a success custom handler in the same way but a hook command is
 ### Test
 To do test for Gunfish, you have to install [h2o](https://h2o.examp1e.net/). **h2o** is used as APNS mock server. So, if you want to test or optimize parameters for your application, you need to prepare the envronment that h2o APNs Mock server works.
 
-Moreover, you have to build h2o with **mruby-sleep** mrbgem. 
+Moreover, you have to build h2o with **mruby-sleep** mrbgem.
 
 
 ```
