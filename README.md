@@ -73,6 +73,36 @@ Response example:
 {"result": "ok"}
 ```
 
+### POST /push/fcm
+
+To delivery remote notifications via FCM to user's devices.
+
+Post body format is equal to it for FCM original server.
+
+example:
+```json
+{
+  "registration_ids": [
+    "token1",
+    "token2"
+  ],
+  "data": {
+    "id": "2",
+    "message": "Test2"
+  },
+  "notification": {
+    "title": "message_title",
+    "body": "message_body"
+  }
+}
+```
+
+Response example:
+```json
+{"result": "ok"}
+```
+
+
 ### GET /stats/app
 
 ```json
