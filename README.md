@@ -1,11 +1,13 @@
 [![Build Status](https://travis-ci.org/kayac/Gunfish.svg?branch=master)](https://travis-ci.org/kayac/Gunfish)
 
 # Gunfish
-APNS provider server on HTTP/2.
 
-* Gunfish provides the only interface as the APNS provider server.
+APNs and FCM provider server on HTTP/2.
+
+* Gunfish provides the nterface as the APNs / FCM provider server.
 
 ## Overview
+
 ![overviews 1](https://cloud.githubusercontent.com/assets/13774847/14844813/17035232-0c95-11e6-8307-1d8340978bb7.png)
 
 [Gunfish slides](http://slides.com/takuyayoshimura-tkyshm/deck-1/fullscreen)
@@ -29,7 +31,6 @@ option             | required | description
 -log-level         | Optional | Set the log level as 'warn', 'info', or 'debug'.
 -log-format        | Optional | Supports `json` or `ltsv` log formats.
 -enable-pprof      | Optional | You can set the flag of pprof debug port open.
--sender-num        | Optional | Set number of concurrency sending notification per http client. That option overwrite config file's param.
 
 ## API
 
@@ -74,23 +75,48 @@ Response example:
 
 ### GET /stats/app
 
+```json
+{
+  "pid": 57843,
+  "debug_port": 0,
+  "uptime": 384,
+  "start_at": 1492476864,
+  "su_at": 0,
+  "period": 309,
+  "retry_after": 10,
+  "workers": 8,
+  "queue_size": 0,
+  "retry_queue_size": 0,
+  "workers_queue_size": 0,
+  "cmdq_queue_size": 0,
+  "retry_count": 0,
+  "req_count": 0,
+  "sent_count": 0,
+  "err_count": 0,
+  "certificate_not_after": "2027-04-16T00:53:53Z",
+  "certificate_expire_until": 315359584
+}
+```
+
 To get the status of APNS proveder server.
 
 stats type | description
 --- | ---
-Pid | PID
-DebugPort | pprof port number
-Uptime | uptime of APNS provider server
-Workers | number of workers
-StartAt | The time of starting APNS provider server
-QueueSize | queue size of requests for Gunfish
-RetryQueueSize | queue size for resending notification
-WorkersQueueSize | summary of worker's queue size
-CommandQueueSize | error hook command queue size
-RetryCount | summary of retry count
-RequestCount | request count to gunfish
-ErrCount | count of recieving error response from APNs
-SentCount | count of sending notification to APNs
+pid | PID
+debug\_port | pprof port number
+uptime | uptime
+workers | number of workers
+start\_at | The time of started
+queue\_size | queue size of requests
+retry\_queue\_size | queue size for resending notification
+workers\_queue\_size | summary of worker's queue size
+command\_queue\_size | error hook command queue size
+retry\_count | summary of retry count
+request\_count | request count to gunfish
+err\_count | count of recieving error response
+sent\_count | count of sending notification
+certificate\_not\_after | certificates minimum expiration date for APNs
+certificate\_expire\_until | certificates minimum expiration untile (sec)
 
 ### GET /stats/profile
 
