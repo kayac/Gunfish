@@ -360,9 +360,14 @@ func handleAPNsResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Co
 			for _, key := range result.ExtraKeys() {
 				logf[key] = result.ExtraValue(key)
 			}
-			onResponse(result, "", cmdq)
+			if err := result.Err(); err != nil {
+				onResponse(result, errorResponseHandler.HookCmd(), cmdq)
+				LogWithFields(logf).Errorf("%s", err)
+			} else {
+				onResponse(result, "", cmdq)
+				LogWithFields(logf).Info("Succeeded to send a notification")
+			}
 		}
-		LogWithFields(logf).Info("Succeeded to send a notification")
 	}
 }
 
