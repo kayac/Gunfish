@@ -2,7 +2,6 @@ package gunfish
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -523,7 +522,7 @@ func onResponse(result Result, cmd string, cmdq chan<- Command) {
 		return
 	}
 
-	b, _ := json.Marshal(&result)
+	b, _ := result.MarshalJSON()
 	command := Command{
 		command: cmd,
 		input:   b,

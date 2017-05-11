@@ -1,5 +1,7 @@
 package gunfish
 
+import "encoding/json"
+
 type Result interface {
 	Err() error
 	Status() int
@@ -7,4 +9,5 @@ type Result interface {
 	RecipientIdentifier() string
 	ExtraKeys() []string
 	ExtraValue(string) string
+	json.Marshaler
 }

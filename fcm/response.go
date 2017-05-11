@@ -62,13 +62,13 @@ func (r Result) ExtraValue(key string) string {
 	return ""
 }
 
-func (r *Result) MarshalJSON() ([]byte, error) {
+func (r Result) MarshalJSON() ([]byte, error) {
 	type Alias Result
-	return json.Marshal(&struct {
+	return json.Marshal(struct {
 		Provider string `json:"provider"`
-		*Alias
+		Alias
 	}{
 		Provider: Provider,
-		Alias:    (*Alias)(r),
+		Alias:    (Alias)(r),
 	})
 }
