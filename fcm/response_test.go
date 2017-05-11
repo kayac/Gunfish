@@ -67,3 +67,20 @@ func buildResponseBodyJSON() string {
             ]
         }`
 }
+
+func TestResult(t *testing.T) {
+	result := Result{
+		StatusCode:     200,
+		MessageID:      "msgid",
+		RegistrationID: "xxxx",
+		Error:          "NotRegistered",
+	}
+	b, err := result.MarshalJSON()
+	if err != nil {
+		t.Error(err)
+	}
+	t.Logf("%s", string(b))
+	if string(b) != `{"provider":"fcm","status":200,"message_id":"msgid","registration_id":"xxxx","error":"NotRegistered"}` {
+		t.Errorf("unexpected encoded json: %s", string(b))
+	}
+}
