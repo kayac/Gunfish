@@ -360,6 +360,7 @@ func handleAPNsResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Co
 				logf[key] = result.ExtraValue(key)
 			}
 			if err := result.Err(); err != nil {
+				atomic.AddInt64(&(srvStats.ErrCount), 1)
 				onResponse(result, errorResponseHandler.HookCmd(), cmdq)
 				LogWithFields(logf).Errorf("%s", err)
 			} else {
@@ -407,6 +408,7 @@ func handleFCMResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Com
 		if err.Error() == fcm.InvalidRegistration.String() {
 			// TODO: should delete registration_id from server data store
 			onResponse(result, errorResponseHandler.HookCmd(), cmdq)
+			LogWithFields(logf).Errorf("%s", err)
 		} else {
 			LogWithFields(logf).Errorf("Unknown error message: %s", err)
 		}
