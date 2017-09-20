@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 func TestQuoting(t *testing.T) {

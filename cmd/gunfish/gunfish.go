@@ -10,8 +10,8 @@ import (
 	"runtime"
 	"strconv"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/kayac/Gunfish"
+	"github.com/sirupsen/logrus"
 )
 
 var version string
