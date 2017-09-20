@@ -13,12 +13,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/fukata/golang-stats-api-handler"
 	"github.com/kayac/Gunfish/apns"
 	"github.com/kayac/Gunfish/fcm"
 	"github.com/lestrrat/go-server-starter/listener"
 	"github.com/shogo82148/go-gracedown"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/netutil"
 )
 

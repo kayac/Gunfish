@@ -12,10 +12,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/kayac/Gunfish/apns"
 	"github.com/kayac/Gunfish/fcm"
 	"github.com/satori/go.uuid"
+	"github.com/sirupsen/logrus"
 )
 
 // Supervisor monitor mutiple http2 clients.
