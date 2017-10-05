@@ -9,9 +9,12 @@ install:
 	 cd cmd/gunfish && go build -ldflags "-X main.version=${GIT_VER} -X main.buildDate=${DATE}"
 		install cmd/gunfish/gunfish ${GOPATH}/bin
 
+get-dep-on-ci:
+	curl -sL https://github.com/golang/dep/releases/download/v0.3.1/dep-linux-amd64 > ${GOPATH}/bin/dep
+	chmod +x ${GOPATH}/bin/dep
+
 get-deps:
-	go get -t -d -v .
-	cd cmd/gunfish && go get -t -d -v .
+	dep ensure
 
 packages:
 	cd cmd/gunfish && gox -os="linux darwin" -arch="amd64" -output "../../pkg/{{.Dir}}-${GIT_VER}-{{.OS}}-{{.Arch}}" -gcflags "-trimpath=${GOPATH}" -ldflags "-w -X main.version=${GIT_VER} -X main.buildDate=${DATE}"
