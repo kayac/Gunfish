@@ -11,8 +11,9 @@ env:
     - PROJECT_ROOT=$HOME/gopath/src/github.com/kayac/Gunfish
 
 go:
-  - 1.7.4
   - 1.8
+  - 1.9
+  - tip
 
 addons:
   apt:
@@ -20,10 +21,11 @@ addons:
       - kalakris-cmake
     packages:
       - cmake
+      - curl
 
 install:
   - cd $PROJECT_ROOT && ./test/scripts/build_h2o.sh
-  - cd $PROJECT_ROOT && make get-deps
+  - cd $PROJECT_ROOT && make get-dep-on-ci && make get-deps
   - go get github.com/mitchellh/gox
 
 script:
