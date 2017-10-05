@@ -21,10 +21,11 @@ addons:
       - kalakris-cmake
     packages:
       - cmake
+      - curl
 
 install:
   - cd $PROJECT_ROOT && ./test/scripts/build_h2o.sh
-  - cd $PROJECT_ROOT && make get-deps
+  - cd $PROJECT_ROOT && make get-dep-on-ci && make get-deps
   - go get github.com/mitchellh/gox
 
 script:
