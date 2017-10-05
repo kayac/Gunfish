@@ -14,10 +14,10 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
   name = "github.com/lestrrat/go-server-starter"
   packages = ["listener"]
-  revision = "88699d57aeee0276b4198e135883ff24b88a742f"
-  version = "0.0.2"
+  revision = "f9cb0b066498d26a90fd918fe265adbb0ea02bcf"
 
 [[projects]]
   name = "github.com/satori/go.uuid"
@@ -64,6 +64,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1efa2cd2e2bf74a929243339885f2aebe30b002d78a3e594e7bb6156c67a3e03"
+  inputs-digest = "e614a2afe5ec3ae363c402ca8b17d729a8bd35661023b304da6141bf6cae32d0"
   solver-name = "gps-cdcl"
   solver-version = 1

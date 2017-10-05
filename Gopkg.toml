@@ -30,8 +30,8 @@
   version = "1.0.0"
 
 [[constraint]]
+  branch = "master"
   name = "github.com/lestrrat/go-server-starter"
-  version = "0.0.2"
 
 [[constraint]]
   name = "github.com/satori/go.uuid"
