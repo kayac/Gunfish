@@ -28,7 +28,7 @@ func StartAPNSMockServer(cert, key string) {
 	http2.ConfigureServer(&s, nil)
 	tlsConf := &tls.Config{}
 	if s.TLSConfig != nil {
-		*tlsConf = *s.TLSConfig
+		tlsConf = s.TLSConfig.Clone()
 	}
 	if tlsConf.NextProtos == nil {
 		tlsConf.NextProtos = []string{"http/2.0"}
