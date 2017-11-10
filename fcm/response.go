@@ -19,7 +19,7 @@ type ResponseBody struct {
 
 // Result is the status of a processed FCMResponse
 type Result struct {
-	StatusCode     int    `json:"status",omitempty`
+	StatusCode     int    `json:"status,omitempty"`
 	MessageID      string `json:"message_id,omitempty"`
 	To             string `json:"to,omitempty"`
 	RegistrationID string `json:"registration_id,omitempty"`
