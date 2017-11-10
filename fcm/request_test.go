@@ -13,7 +13,7 @@ func TestUnmarshalPayload(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(p, buildPayload()) {
-		t.Error("mismatch decoded payload: got=%v, expected=%v", p, buildPayload())
+		t.Errorf("mismatch decoded payload: got=%v, expected=%v", p, buildPayload())
 	}
 }
 
