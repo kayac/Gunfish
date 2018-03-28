@@ -194,7 +194,7 @@ func TestTooLargeRequest(t *testing.T) {
 	sup.Shutdown()
 }
 
-func TestMethodNotAllowd(t *testing.T) {
+func TestMethodNotAllowed(t *testing.T) {
 	sup, _ := StartSupervisor(&config)
 	prov := &Provider{sup: sup}
 	handler := prov.pushAPNsHandler()
