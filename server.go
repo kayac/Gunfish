@@ -271,6 +271,7 @@ func (prov *Provider) pushFCMHandler() http.HandlerFunc {
 			logrus.Warnf("Internal Server Error: %s", err)
 			res.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(res, "{\"reason\":\"%s\"}", err.Error())
+			return
 		}
 		grs := []Request{
 			Request{
