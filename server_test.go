@@ -152,7 +152,7 @@ func TestEnqueueTooManyRequest(t *testing.T) {
 		t.Errorf("Expected status code is 503 but got %d", w.Code)
 	}
 	if w.Header().Get("Retry-After") == "" {
-		t.Errorf("Not set Retry-After correctlly: ", w.Header().Get("Retry-After"))
+		t.Error("Not set Retry-After correctlly")
 	}
 
 	// Test Retry-After value increases
