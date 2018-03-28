@@ -66,6 +66,30 @@ func TestSuccessToPostJson(t *testing.T) {
 	sup.Shutdown()
 }
 
+func TestFailedToPostInvalidJson(t *testing.T) {
+	sup, _ := StartSupervisor(&config)
+	prov := &Provider{sup: sup}
+	handler := prov.pushFCMHandler()
+
+	// missing `}`
+	invalidJson := []byte(`{"registration_ids": ["xxxxxxxxx"], "data": {"message":"test"`)
+
+	w := httptest.NewRecorder()
+	r, err := newRequest(invalidJson, "POST", ApplicationJSON)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	handler.ServeHTTP(w, r)
+
+	invalidResponse := bytes.NewBufferString("{\"reason\":\"unexpected EOF\"}{\"result\": \"ok\"}").String()
+	if w.Body.String() == invalidResponse {
+		t.Errorf("Invalid Json responce: '%s'", w.Body)
+	}
+
+	sup.Shutdown()
+}
+
 func TestFailedToPostMalformedJson(t *testing.T) {
 	sup, _ := StartSupervisor(&config)
 	prov := &Provider{sup: sup}
@@ -152,7 +176,7 @@ func TestEnqueueTooManyRequest(t *testing.T) {
 		t.Errorf("Expected status code is 503 but got %d", w.Code)
 	}
 	if w.Header().Get("Retry-After") == "" {
-		t.Errorf("Not set Retry-After correctlly: ", w.Header().Get("Retry-After"))
+		t.Error("Not set Retry-After correctlly")
 	}
 
 	// Test Retry-After value increases
@@ -194,7 +218,7 @@ func TestTooLargeRequest(t *testing.T) {
 	sup.Shutdown()
 }
 
-func TestMethodNotAllowd(t *testing.T) {
+func TestMethodNotAllowed(t *testing.T) {
 	sup, _ := StartSupervisor(&config)
 	prov := &Provider{sup: sup}
 	handler := prov.pushAPNsHandler()
