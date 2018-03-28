@@ -66,6 +66,30 @@ func TestSuccessToPostJson(t *testing.T) {
 	sup.Shutdown()
 }
 
+func TestFailedToPostInvalidJson(t *testing.T) {
+	sup, _ := StartSupervisor(&config)
+	prov := &Provider{sup: sup}
+	handler := prov.pushFCMHandler()
+
+	// missing `}`
+	invalidJson := []byte(`{"registration_ids": ["xxxxxxxxx"], "data": {"message":"test"`)
+
+	w := httptest.NewRecorder()
+	r, err := newRequest(invalidJson, "POST", ApplicationJSON)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	handler.ServeHTTP(w, r)
+
+	invalidResponse := bytes.NewBufferString("{\"reason\":\"unexpected EOF\"}{\"result\": \"ok\"}").String()
+	if w.Body.String() == invalidResponse {
+		t.Errorf("Invalid Json responce: '%s'", w.Body)
+	}
+
+	sup.Shutdown()
+}
+
 func TestFailedToPostMalformedJson(t *testing.T) {
 	sup, _ := StartSupervisor(&config)
 	prov := &Provider{sup: sup}
