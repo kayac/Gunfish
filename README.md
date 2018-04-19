@@ -27,8 +27,8 @@ option             | required | description
 -------------------|----------|------------------------------------------------------------------------------------------------------------------
 -port              | Optional | Port number of Gunfish provider server. Default is `8003`.
 -environment, -E   | Optional | Default value is `production`.
--conf, -c          | Optional | Set a string where you want to write the log message such as a file (specified path), 'stdout', 'stderr', or 'discard'. By default, leave it to 'github.com/sirupsen/logrus'.
--log-output        | Optional | Please specify the log file path or `stdout`, `stderr` and `discard` where you want to output the log message. By default, leave it to `github.com/sirupsen/logrus`.
+-conf, -c          | Optional | Please specify this option if you want to change `toml` config file path. (default: `/etc/gunfish/config.toml`.)
+-log-output        | Optional | Set a string where you want to write the log message such as a file (specified path), 'stdout', 'stderr', or 'discard'. By default, leave it to 'github.com/sirupsen/logrus'.
 -log-level         | Optional | Set the log level as 'warn', 'info', or 'debug'.
 -log-format        | Optional | Supports `json` or `ltsv` log formats.
 -enable-pprof      | Optional | You can set the flag of pprof debug port open.
