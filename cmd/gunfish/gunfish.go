@@ -130,7 +130,7 @@ func initLogrus(logOutput string, format string, logLevel string) {
 		if err == nil {
 			logrus.SetOutput(file)
 		} else {
-			logrus.Info("Failed to log to file, using default stderr")
+			logrus.Info("Failed to log to file, using default")
 		}
 	}
 
