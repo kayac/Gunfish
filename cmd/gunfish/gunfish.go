@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/pprof"
@@ -19,25 +20,26 @@ var version string
 func main() {
 	var (
 		config      string
+		enablePprof bool
 		environment string
 		logFormat   string
-		port        int
-		enablePprof bool
-		showVersion bool
 		logLevel    string
+		logOutput   string
+		port        int
+		showVersion bool
 	)
 
-	flag.StringVar(&config, "config", "/etc/gunfish/config.toml", "specify config file.")
-	flag.StringVar(&config, "c", "/etc/gunfish/config.toml", "specify config file.")
-	flag.StringVar(&environment, "environment", "production", "APNS environment. (production, development, or test)")
 	flag.StringVar(&environment, "E", "production", "APNS environment. (production, development, or test)")
-	flag.IntVar(&port, "port", 0, "Gunfish port number (range 1024-65535).")
-	flag.StringVar(&logFormat, "log-format", "", "specifies the log format: ltsv or json.")
+	flag.StringVar(&config, "c", "/etc/gunfish/config.toml", "specify config file.")
+	flag.StringVar(&config, "config", "/etc/gunfish/config.toml", "specify config file.")
 	flag.BoolVar(&enablePprof, "enable-pprof", false, ".")
+	flag.StringVar(&environment, "environment", "production", "APNS environment. (production, development, or test)")
+	flag.StringVar(&logFormat, "log-format", "", "specifies the log format: ltsv or json.")
+	flag.StringVar(&logLevel, "log-level", "info", "set the log level (debug, warn, info)")
+	flag.StringVar(&logOutput, "log-output", "", "set a string where you want to write the log message such as a file (specified path), 'stdout', 'stderr', or 'discard'. By default, leave it to 'github.com/sirupsen/logrus'.")
+	flag.IntVar(&port, "port", 0, "Gunfish port number (range 1024-65535).")
 	flag.BoolVar(&showVersion, "v", false, "show version number.")
 	flag.BoolVar(&showVersion, "version", false, "show version number.")
-
-	flag.StringVar(&logLevel, "log-level", "info", "set the log level (debug, warn, info)")
 	flag.Parse()
 
 	if showVersion {
@@ -46,7 +48,7 @@ func main() {
 		return
 	}
 
-	initLogrus(logFormat, logLevel)
+	initLogrus(logOutput, logFormat, logLevel)
 
 	c, err := gunfish.LoadConfig(config)
 	if err != nil {
@@ -106,7 +108,7 @@ func main() {
 	gunfish.StartServer(c, env)
 }
 
-func initLogrus(format string, logLevel string) {
+func initLogrus(logOutput string, format string, logLevel string) {
 	switch format {
 	case "ltsv":
 		logrus.SetFormatter(&gunfish.LtsvFormatter{})
@@ -114,10 +116,27 @@ func initLogrus(format string, logLevel string) {
 		logrus.SetFormatter(&logrus.JSONFormatter{})
 	}
 
+	switch logOutput {
+	case "":
+		// do nothing
+	case "stdout":
+		logrus.SetOutput(os.Stdout)
+	case "stderr":
+		logrus.SetOutput(os.Stderr)
+	case "discard":
+		logrus.SetOutput(ioutil.Discard)
+	default:
+		file, err := os.OpenFile(logOutput, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		if err == nil {
+			logrus.SetOutput(file)
+		} else {
+			logrus.Info("Failed to log to file, using default")
+		}
+	}
+
 	lvl, err := logrus.ParseLevel(logLevel)
 	if err != nil {
 		lvl = logrus.InfoLevel
 	}
-
 	logrus.SetLevel(lvl)
 }
