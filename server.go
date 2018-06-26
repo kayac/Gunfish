@@ -97,7 +97,7 @@ func StartServer(conf Config, env Environment) {
 	if err != nil {
 		LogWithFields(logrus.Fields{
 			"type": "provider",
-		}).Warnf("%s. If you want graceful to restart Gunfish, you should use 'starter_server' (github.com/lestrrat/go-server-starter).", err)
+		}).Infof("%s. If you want graceful to restart Gunfish, you should use 'starter_server' (github.com/lestrrat/go-server-starter).", err)
 	}
 
 	// Start gunfish provider server
