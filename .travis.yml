@@ -11,8 +11,8 @@ env:
     - PROJECT_ROOT=$HOME/gopath/src/github.com/kayac/Gunfish
 
 go:
-  - 1.8
-  - 1.9
+  - 1.9.x
+  - 1.10.3
   - tip
 
 addons:
@@ -43,7 +43,7 @@ deploy:
     - pkg/*.{zip}
   on:
     tags: true
-    go: 1.7.4
+    go: 1.10.3
 
 cache:
   directories:
