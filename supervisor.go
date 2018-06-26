@@ -311,7 +311,7 @@ func (w *Worker) receiveResponse(resp SenderResponse, retryq chan<- Request, cmd
 		}
 		handleFCMResponse(resp, retryq, cmdq, logf)
 	default:
-		LogWithFields(logrus.Fields{"type": "worker"}).Infof("Unknown request type:", t)
+		LogWithFields(logrus.Fields{"type": "worker"}).Infof("Unknown request type:%s", t)
 	}
 
 }
