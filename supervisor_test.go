@@ -237,4 +237,20 @@ func TestSuccessOrFailureInvoke(t *testing.T) {
 	if fmt.Sprintf("%s", err.Error()) != `exit status 1` {
 		t.Errorf("invalid err message: %s", err.Error())
 	}
+
+	// stdout be not captured
+	OutputHookStdout = true
+	src = bytes.NewBuffer(j)
+	out, err = invokePipe(`cat; echo 'this is error.' 1>&2`, src)
+	if len(out) != 15 {
+		t.Errorf("hooks stdout must not be captured: %s", out)
+	}
+
+	// stderr
+	OutputHookStderr = true
+	src = bytes.NewBuffer(j)
+	out, err = invokePipe(`cat; echo 'this is error.' 1>&2`, src)
+	if len(out) != 0 {
+		t.Errorf("hooks stderr must not be captured: %s", out)
+	}
 }

@@ -90,3 +90,8 @@ var (
 		"launch-image":   "LaunchImage",
 	}
 )
+
+var (
+	OutputHookStdout bool
+	OutputHookStderr bool
+)

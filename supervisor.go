@@ -546,6 +546,19 @@ func invokePipe(hook string, src io.Reader) ([]byte, error) {
 		return nil, fmt.Errorf("failed: %v %s", cmd, err.Error())
 	}
 
+	var b bytes.Buffer
+	// merge std(out|err) of command to gunfish
+	if OutputHookStdout {
+		cmd.Stdout = os.Stdout
+	} else {
+		cmd.Stdout = &b
+	}
+	if OutputHookStderr {
+		cmd.Stderr = os.Stderr
+	} else {
+		cmd.Stderr = &b
+	}
+
 	// src copy to cmd.stdin
 	_, err = io.Copy(stdin, src)
 	if e, ok := err.(*os.PathError); ok && e.Err == syscall.EPIPE {
@@ -555,5 +568,6 @@ func invokePipe(hook string, src io.Reader) ([]byte, error) {
 	}
 	stdin.Close()
 
-	return cmd.CombinedOutput()
+	err = cmd.Run()
+	return b.Bytes(), err
 }
