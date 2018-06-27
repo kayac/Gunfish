@@ -36,6 +36,8 @@ func main() {
 	flag.BoolVar(&enablePprof, "enable-pprof", false, ".")
 	flag.BoolVar(&showVersion, "v", false, "show version number.")
 	flag.BoolVar(&showVersion, "version", false, "show version number.")
+	flag.BoolVar(&gunfish.OutputHookStdout, "output-hook-stdout", false, "merge stdout of hook command to gunfish's stdout")
+	flag.BoolVar(&gunfish.OutputHookStderr, "output-hook-stderr", false, "merge stderr of hook command to gunfish's stderr")
 
 	flag.StringVar(&logLevel, "log-level", "info", "set the log level (debug, warn, info)")
 	flag.Parse()
