@@ -23,14 +23,16 @@ $ gunfish -c ./config/gunfish.toml -E production
 
 ### Commandline Options
 
-option             | required | description
--------------------|----------|------------------------------------------------------------------------------------------------------------------
--port              | Optional | Port number of Gunfish provider server. Default is `8003`.
--environment, -E   | Optional | Default value is `production`.
--conf, -c          | Optional | Please specify this option if you want to change `toml` config file path. (default: `/etc/gunfish/config.toml`.)
--log-level         | Optional | Set the log level as 'warn', 'info', or 'debug'.
--log-format        | Optional | Supports `json` or `ltsv` log formats.
--enable-pprof      | Optional | You can set the flag of pprof debug port open.
+option              | required | description
+------------------- |----------|------------------------------------------------------------------------------------------------------------------
+-port               | Optional | Port number of Gunfish provider server. Default is `8003`.
+-environment, -E    | Optional | Default value is `production`.
+-conf, -c           | Optional | Please specify this option if you want to change `toml` config file path. (default: `/etc/gunfish/config.toml`.)
+-log-level          | Optional | Set the log level as 'warn', 'info', or 'debug'.
+-log-format         | Optional | Supports `json` or `ltsv` log formats.
+-enable-pprof       | Optional | You can set the flag of pprof debug port open.
+-output-hook-stdout | Optional | Merge stdout of hook command to gunfish's stdout.
+-output-hook-stderr | Optional | Merge stderr of hook command to gunfish's stderr.
 
 ## API
 
