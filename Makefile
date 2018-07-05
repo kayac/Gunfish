@@ -17,7 +17,14 @@ get-deps:
 	dep ensure
 
 packages:
-	cd cmd/gunfish && gox -os="linux darwin" -arch="amd64" -output "../../pkg/{{.Dir}}-${GIT_VER}-{{.OS}}-{{.Arch}}" -gcflags "-trimpath=${GOPATH}" -ldflags "-w -X main.version=${GIT_VER} -X main.buildDate=${DATE}"
+	cd cmd/gunfish \
+		&& CGO_ENABLED=0 gox \
+			-os="linux darwin" \
+			-arch="amd64" \
+			-output "../../pkg/{{.Dir}}-${GIT_VER}-{{.OS}}-{{.Arch}}" \
+			-gcflags "-trimpath=${GOPATH}" \
+			-ldflags "-w -X main.version=${GIT_VER} -X main.buildDate=${DATE} -extldflags \"-static\"" \
+			-tags "netgo"
 	cd pkg && find . -name "*${GIT_VER}*" -type f -exec zip {}.zip {} \;
 
 gen-cert:
