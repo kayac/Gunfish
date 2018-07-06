@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/BurntSushi/toml"
+	goconf "github.com/kayac/go-config"
 	"github.com/sirupsen/logrus"
 )
 
@@ -53,7 +53,7 @@ func DefaultLoadConfig() (Config, error) {
 func LoadConfig(fn string) (Config, error) {
 	var config Config
 
-	if _, err := toml.DecodeFile(fn, &config); err != nil {
+	if err := goconf.LoadWithEnvTOML(&config, fn); err != nil {
 		LogWithFields(logrus.Fields{"type": "load_config"}).Warnf("%v %s %s", config, err, fn)
 		return config, err
 	}
