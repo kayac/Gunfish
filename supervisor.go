@@ -456,7 +456,7 @@ func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.Wait
 				RespTime: respTime,
 				Req:      req, // Must copy
 				Err:      err,
-				UID:      uuid.NewV4().String(),
+				UID:      uuid.Must(uuid.NewV4()).String(),
 			}
 		case fcm.Payload:
 			if fc == nil {
@@ -477,7 +477,7 @@ func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.Wait
 				RespTime: respTime,
 				Req:      req,
 				Err:      err,
-				UID:      uuid.NewV4().String(),
+				UID:      uuid.Must(uuid.NewV4()).String(),
 			}
 		default:
 			LogWithFields(logrus.Fields{"type": "sender"}).
