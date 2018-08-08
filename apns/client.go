@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/kayac/Gunfish/config"
 	"golang.org/x/net/http2"
 )
 
@@ -20,8 +21,14 @@ const (
 
 // Client is apns client
 type Client struct {
-	Host   string
-	client *http.Client
+	Host         string
+	client       *http.Client
+	authToken    string
+	kid          string
+	teamID       string
+	keyFile      string
+	issuedAt     time.Time
+	useAuthToken bool
 }
 
 // Send sends notifications to apns
@@ -90,11 +97,47 @@ func (ac *Client) NewRequest(token string, h *Header, payload Payload) (*http.Re
 		}
 	}
 
+	// APNs provider token authenticaton
+	if ac.useAuthToken {
+		// If iat of jwt is more than 1 hour ago, returns 403 InvalidProviderToken.
+		// So, recreate jwt earlier than 1 hour.
+		if ac.issuedAt.Add(time.Hour - time.Minute).Before(time.Now()) {
+			if err := ac.issueToken(); err != nil {
+				return nil, err
+			}
+		}
+		nreq.Header.Set("Authorization", "bearer "+ac.authToken)
+	}
+
 	return nreq, err
 }
 
+func (ac *Client) issueToken() error {
+	var err error
+	now := time.Now()
+	ac.authToken, err = CreateJWT(ac.keyFile, ac.kid, ac.teamID, now)
+	if err != nil {
+		return err
+	}
+	ac.issuedAt = now
+	return nil
+}
+
 // NewConnection establishes a http2 connection
-func NewConnection(certFile, keyFile string, secuskip bool) (*http.Client, error) {
+func NewConnection(certFile, keyFile string, secureSkip, useAuthToken bool) (*http.Client, error) {
+	// Provider authentication token
+	if useAuthToken {
+		tr := &http.Transport{}
+		if err := http2.ConfigureTransport(tr); err != nil {
+			return nil, err
+		}
+		return &http.Client{
+			Timeout:   HTTP2ClientTimeout,
+			Transport: tr,
+		}, nil
+	}
+
+	// APNs Provider Certificates
 	certPEMBlock, err := ioutil.ReadFile(certFile)
 	if err != nil {
 		return nil, err
@@ -113,7 +156,7 @@ func NewConnection(certFile, keyFile string, secuskip bool) (*http.Client, error
 
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: secuskip,
+			InsecureSkipVerify: secureSkip,
 			Certificates:       []tls.Certificate{cert},
 		},
 	}
@@ -128,13 +171,26 @@ func NewConnection(certFile, keyFile string, secuskip bool) (*http.Client, error
 	}, nil
 }
 
-func NewClient(host, cert, key string, skipInsecure bool) (*Client, error) {
-	c, err := NewConnection(cert, key, skipInsecure)
+func NewClient(conf config.SectionApns) (*Client, error) {
+	useAuthToken := conf.Kid != "" && conf.TeamID != ""
+	c, err := NewConnection(conf.CertFile, conf.KeyFile, conf.SkipInsecure, useAuthToken)
 	if err != nil {
 		return nil, err
 	}
-	return &Client{
-		Host:   host,
-		client: c,
-	}, nil
+
+	client := &Client{
+		Host:         conf.Host,
+		client:       c,
+		kid:          conf.Kid,
+		teamID:       conf.TeamID,
+		keyFile:      conf.KeyFile,
+		useAuthToken: useAuthToken,
+	}
+	if client.useAuthToken {
+		if err := client.issueToken(); err != nil {
+			return nil, err
+		}
+	}
+
+	return client, nil
 }

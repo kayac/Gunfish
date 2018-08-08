@@ -98,7 +98,7 @@ func StartAPNSMockServer(cert, key string) {
 
 // StopAPNSServer stops APNS Mock server
 func StopAPNSServer(cert, key string, insecure bool) error {
-	client, err := NewConnection(cert, key, insecure)
+	client, err := NewConnection(cert, key, insecure, false)
 	if err != nil {
 		return err
 	}
