@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/kayac/Gunfish/apns"
+	"github.com/kayac/Gunfish/config"
 	"github.com/kayac/Gunfish/fcm"
 	"github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
@@ -78,7 +79,7 @@ func (s *Supervisor) EnqueueClientRequest(reqs *[]Request) error {
 }
 
 // StartSupervisor starts supervisor
-func StartSupervisor(conf *Config) (Supervisor, error) {
+func StartSupervisor(conf *config.Config) (Supervisor, error) {
 	// Calculates each worker queue size to accept requests with a given parameter of requests per sec as flow rate.
 	var wqSize int
 	tp := ((conf.Provider.RequestQueueSize * int(AverageResponseTime/time.Millisecond)) / 1000) / SenderNum
@@ -157,8 +158,8 @@ func StartSupervisor(conf *Config) (Supervisor, error) {
 			ac *apns.Client
 			fc *fcm.Client
 		)
-		if conf.Apns.enabled {
-			ac, err = apns.NewClient(conf.Apns.Host, conf.Apns.CertFile, conf.Apns.KeyFile, conf.Apns.SkipInsecure)
+		if conf.Apns.Enabled {
+			ac, err = apns.NewClient(conf.Apns)
 			if err != nil {
 				LogWithFields(logrus.Fields{
 					"type": "supervisor",
@@ -166,7 +167,7 @@ func StartSupervisor(conf *Config) (Supervisor, error) {
 				break
 			}
 		}
-		if conf.FCM.enabled {
+		if conf.FCM.Enabled {
 			fc, err = fcm.NewClient(conf.FCM.APIKey, nil, fcm.ClientTimeout)
 			if err != nil {
 				LogWithFields(logrus.Fields{
@@ -240,7 +241,7 @@ func (s *Supervisor) Shutdown() {
 	}).Infoln("Stoped supervisor.")
 }
 
-func (s *Supervisor) spawnWorker(w Worker, conf *Config) {
+func (s *Supervisor) spawnWorker(w Worker, conf *config.Config) {
 	atomic.AddInt64(&(srvStats.Workers), 1)
 	defer func() {
 		atomic.AddInt64(&(srvStats.Workers), -1)

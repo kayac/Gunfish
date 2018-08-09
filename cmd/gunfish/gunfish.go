@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	"github.com/kayac/Gunfish"
+	"github.com/kayac/Gunfish/config"
 	"github.com/sirupsen/logrus"
 )
 
@@ -18,7 +19,7 @@ var version string
 
 func main() {
 	var (
-		config      string
+		confPath    string
 		environment string
 		logFormat   string
 		port        int
@@ -27,8 +28,8 @@ func main() {
 		logLevel    string
 	)
 
-	flag.StringVar(&config, "config", "/etc/gunfish/config.toml", "specify config file.")
-	flag.StringVar(&config, "c", "/etc/gunfish/config.toml", "specify config file.")
+	flag.StringVar(&confPath, "config", "/etc/gunfish/config.toml", "specify config file.")
+	flag.StringVar(&confPath, "c", "/etc/gunfish/config.toml", "specify config file.")
 	flag.StringVar(&environment, "environment", "production", "APNS environment. (production, development, or test)")
 	flag.StringVar(&environment, "E", "production", "APNS environment. (production, development, or test)")
 	flag.IntVar(&port, "port", 0, "Gunfish port number (range 1024-65535).")
@@ -50,7 +51,7 @@ func main() {
 
 	initLogrus(logFormat, logLevel)
 
-	c, err := gunfish.LoadConfig(config)
+	c, err := config.LoadConfig(confPath)
 	if err != nil {
 		logrus.Error(err)
 		os.Exit(1)

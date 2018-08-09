@@ -9,11 +9,12 @@ import (
 	"time"
 
 	"github.com/kayac/Gunfish/apns"
+	"github.com/kayac/Gunfish/config"
 	"github.com/sirupsen/logrus"
 )
 
 var (
-	config, _ = LoadConfig("./test/gunfish_test.toml")
+	conf, _ = config.LoadConfig("./test/gunfish_test.toml")
 )
 
 type TestResponseHandler struct {
@@ -55,11 +56,11 @@ func (tr TestResponseHandler) HookCmd() string {
 
 func init() {
 	logrus.SetLevel(logrus.WarnLevel)
-	config.Apns.Host = MockServer
+	conf.Apns.Host = MockServer
 }
 
 func TestStartAndStopSupervisor(t *testing.T) {
-	sup, err := StartSupervisor(&config)
+	sup, err := StartSupervisor(&conf)
 	if err != nil {
 		t.Errorf("cannot start supvisor: %s", err.Error())
 	}
@@ -91,7 +92,7 @@ func TestEnqueuRequestToSupervisor(t *testing.T) {
 	etr := TestResponseHandler{
 		wg:         &wg,
 		scoreboard: score,
-		hook:       config.Provider.ErrorHook,
+		hook:       conf.Provider.ErrorHook,
 	}
 	str := TestResponseHandler{
 		wg:         &wg,
@@ -100,7 +101,7 @@ func TestEnqueuRequestToSupervisor(t *testing.T) {
 	InitErrorResponseHandler(etr)
 	InitSuccessResponseHandler(str)
 
-	sup, err := StartSupervisor(&config)
+	sup, err := StartSupervisor(&conf)
 	if err != nil {
 		t.Errorf("cannot start supervisor: %s", err.Error())
 	}

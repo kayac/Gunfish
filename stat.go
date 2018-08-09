@@ -3,6 +3,8 @@ package gunfish
 import (
 	"os"
 	"time"
+
+	"github.com/kayac/Gunfish/config"
 )
 
 // Stats stores metrics
@@ -28,7 +30,7 @@ type Stats struct {
 }
 
 // NewStats initialize Stats
-func NewStats(conf Config) Stats {
+func NewStats(conf config.Config) Stats {
 	return Stats{
 		Pid:                 os.Getpid(),
 		StartAt:             time.Now().Unix(),
