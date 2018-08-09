@@ -44,6 +44,8 @@ func (st *Stats) GetStats() *Stats {
 	preUptime := st.Uptime
 	st.Uptime = time.Now().Unix() - st.StartAt
 	st.Period = st.Uptime - preUptime
-	st.CertificateExpireUntil = int64(st.CertificateNotAfter.Sub(time.Now()).Seconds())
+	if !st.CertificateNotAfter.IsZero() {
+		st.CertificateExpireUntil = int64(st.CertificateNotAfter.Sub(time.Now()).Seconds())
+	}
 	return st
 }
