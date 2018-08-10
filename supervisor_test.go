@@ -80,7 +80,7 @@ func TestStartAndStopSupervisor(t *testing.T) {
 	}
 }
 
-func TestEnqueuRequestToSupervisor(t *testing.T) {
+func TestEnqueueRequestToSupervisor(t *testing.T) {
 	// Prepare
 	wg := sync.WaitGroup{}
 	score := make(map[string]*int, 4)

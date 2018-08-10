@@ -2,6 +2,7 @@ package gunfish
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -334,24 +335,7 @@ func handleAPNsResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Co
 			onResponse(result, errorResponseHandler.HookCmd(), cmdq)
 		} else {
 			// if 'result' is nil, HTTP connection error with APNS.
-			LogWithFields(logf).Warnf("response is nil. reason: %s", resp.Err.Error())
-			if req.Tries < SendRetryCount {
-				req.Tries++
-				atomic.AddInt64(&(srvStats.RetryCount), 1)
-				logf["resend_cnt"] = req.Tries
-
-				select {
-				case retryq <- req:
-					LogWithFields(logf).
-						Debugf("Retry to enqueue into retryq because of http connection error with APNS.")
-				default:
-					LogWithFields(logf).
-						Warnf("Supervisor retry queue is full.")
-				}
-			} else {
-				LogWithFields(logf).
-					Warnf("Retry count is over than %d. Could not deliver notification.", SendRetryCount)
-			}
+			retry(retryq, req, errors.New("http connection error between APNs"), logf)
 		}
 	} else {
 		atomic.AddInt64(&(srvStats.SentCount), 1)
@@ -362,6 +346,12 @@ func handleAPNsResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Co
 			}
 			if err := result.Err(); err != nil {
 				atomic.AddInt64(&(srvStats.ErrCount), 1)
+
+				// retry when provider auhentication token is expired
+				if err.Error() == apns.ExpiredProviderToken.String() {
+					retry(retryq, req, err, logf)
+				}
+
 				onResponse(result, errorResponseHandler.HookCmd(), cmdq)
 				LogWithFields(logf).Errorf("%s", err)
 			} else {
@@ -571,4 +561,24 @@ func invokePipe(hook string, src io.Reader) ([]byte, error) {
 
 	err = cmd.Run()
 	return b.Bytes(), err
+}
+
+func retry(retryq chan<- Request, req Request, err error, logf logrus.Fields) {
+	if req.Tries < SendRetryCount {
+		req.Tries++
+		atomic.AddInt64(&(srvStats.RetryCount), 1)
+		logf["resend_cnt"] = req.Tries
+
+		select {
+		case retryq <- req:
+			LogWithFields(logf).
+				Debugf("%s: Retry to enqueue into retryq.", err.Error())
+		default:
+			LogWithFields(logf).
+				Warnf("Supervisor retry queue is full.")
+		}
+	} else {
+		LogWithFields(logf).
+			Warnf("Retry count is over than %d. Could not deliver notification.", SendRetryCount)
+	}
 }
