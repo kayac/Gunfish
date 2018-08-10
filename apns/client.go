@@ -127,7 +127,11 @@ func (ac *Client) issueToken() error {
 func NewConnection(certFile, keyFile string, secureSkip, useAuthToken bool) (*http.Client, error) {
 	// Provider authentication token
 	if useAuthToken {
-		tr := &http.Transport{}
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: secureSkip,
+			},
+		}
 		if err := http2.ConfigureTransport(tr); err != nil {
 			return nil, err
 		}
