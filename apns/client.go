@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/kayac/Gunfish/config"
 	"golang.org/x/net/http2"
 )
 
@@ -26,10 +27,20 @@ var ClientTransport = func(cert tls.Certificate) *http.Transport {
 	}
 }
 
+type authToken struct {
+	jwt      string
+	issuedAt time.Time
+}
+
 // Client is apns client
 type Client struct {
-	Host   string
-	client *http.Client
+	Host         string
+	client       *http.Client
+	authToken    authToken
+	kid          string
+	teamID       string
+	keyFile      string
+	useAuthToken bool
 }
 
 // Send sends notifications to apns
@@ -98,35 +109,74 @@ func (ac *Client) NewRequest(token string, h *Header, payload Payload) (*http.Re
 		}
 	}
 
+	// APNs provider token authenticaton
+	if ac.useAuthToken {
+		// If iat of jwt is more than 1 hour ago, returns 403 InvalidProviderToken.
+		// So, recreate jwt earlier than 1 hour.
+		if ac.authToken.issuedAt.Add(time.Hour - time.Minute).Before(time.Now()) {
+			if err := ac.issueToken(); err != nil {
+				return nil, err
+			}
+		}
+		nreq.Header.Set("Authorization", "bearer "+ac.authToken.jwt)
+	}
+
 	return nreq, err
 }
 
-func NewClient(host, certFile, keyFile string) (*Client, error) {
-	certPEMBlock, err := ioutil.ReadFile(certFile)
+func (ac *Client) issueToken() error {
+	var err error
+	now := time.Now()
+
+	ac.authToken.jwt, err = CreateJWT(ac.keyFile, ac.kid, ac.teamID, now)
 	if err != nil {
-		return nil, err
+		return err
+	}
+	ac.authToken.issuedAt = now
+	return nil
+}
+
+func NewClient(conf config.SectionApns) (*Client, error) {
+	useAuthToken := conf.Kid != "" && conf.TeamID != ""
+	tr := &http.Transport{}
+	if !useAuthToken {
+		certPEMBlock, err := ioutil.ReadFile(conf.CertFile)
+		if err != nil {
+			return nil, err
+		}
+
+		keyPEMBlock, err := ioutil.ReadFile(conf.KeyFile)
+		if err != nil {
+			return nil, err
+		}
+
+		cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
+		if err != nil {
+			return nil, err
+		}
+		tr = ClientTransport(cert)
 	}
 
-	keyPEMBlock, err := ioutil.ReadFile(keyFile)
-	if err != nil {
-		return nil, err
-	}
-
-	cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
-	if err != nil {
-		return nil, err
-	}
-
-	tr := ClientTransport(cert)
 	if err := http2.ConfigureTransport(tr); err != nil {
 		return nil, err
 	}
 
-	return &Client{
-		Host: host,
+	client := &Client{
+		Host: conf.Host,
 		client: &http.Client{
 			Timeout:   HTTP2ClientTimeout,
 			Transport: tr,
 		},
-	}, nil
+		kid:          conf.Kid,
+		teamID:       conf.TeamID,
+		keyFile:      conf.KeyFile,
+		useAuthToken: useAuthToken,
+	}
+	if client.useAuthToken {
+		if err := client.issueToken(); err != nil {
+			return nil, err
+		}
+	}
+
+	return client, nil
 }
