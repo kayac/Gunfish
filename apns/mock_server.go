@@ -96,18 +96,6 @@ func StartAPNSMockServer(cert, key string) {
 	log.Fatal(s.Serve(tlsListener))
 }
 
-// StopAPNSServer stops APNS Mock server
-func StopAPNSServer(cert, key string, insecure bool) error {
-	client, err := NewConnection(cert, key, insecure, false)
-	if err != nil {
-		return err
-	}
-
-	client.Get("/stop")
-
-	return nil
-}
-
 func createErrorResponse(ermsg ErrorResponseCode, status int) string {
 	var er ErrorResponse
 	if status == http.StatusGone {

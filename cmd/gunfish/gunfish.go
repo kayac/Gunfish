@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"net"
@@ -11,6 +12,7 @@ import (
 	"strconv"
 
 	"github.com/kayac/Gunfish"
+	"github.com/kayac/Gunfish/apns"
 	"github.com/kayac/Gunfish/config"
 	"github.com/sirupsen/logrus"
 )
@@ -70,6 +72,14 @@ func main() {
 		env = gunfish.Development
 	case "test":
 		env = gunfish.Test
+		apns.ClientTransport = func(cert tls.Certificate) *http.Transport {
+			return &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+					Certificates:       []tls.Certificate{cert},
+				},
+			}
+		}
 	default:
 		logrus.Error("Unknown environment: %s. Please look at help.", environment)
 		os.Exit(1)

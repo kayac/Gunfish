@@ -19,6 +19,14 @@ const (
 	HTTP2ClientTimeout = time.Second * 10
 )
 
+var ClientTransport = func(cert tls.Certificate) *http.Transport {
+	return &http.Transport{
+		TLSClientConfig: &tls.Config{
+			Certificates: []tls.Certificate{cert},
+		},
+	}
+}
+
 // Client is apns client
 type Client struct {
 	Host         string
@@ -123,68 +131,37 @@ func (ac *Client) issueToken() error {
 	return nil
 }
 
-// NewConnection establishes a http2 connection
-func NewConnection(certFile, keyFile string, secureSkip, useAuthToken bool) (*http.Client, error) {
-	// Provider authentication token
-	if useAuthToken {
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: secureSkip,
-			},
-		}
-		if err := http2.ConfigureTransport(tr); err != nil {
+func NewClient(conf config.SectionApns) (*Client, error) {
+	useAuthToken := conf.Kid != "" && conf.TeamID != ""
+	tr := &http.Transport{}
+	if !useAuthToken {
+		certPEMBlock, err := ioutil.ReadFile(conf.CertFile)
+		if err != nil {
 			return nil, err
 		}
-		return &http.Client{
-			Timeout:   HTTP2ClientTimeout,
-			Transport: tr,
-		}, nil
-	}
 
-	// APNs Provider Certificates
-	certPEMBlock, err := ioutil.ReadFile(certFile)
-	if err != nil {
-		return nil, err
-	}
+		keyPEMBlock, err := ioutil.ReadFile(conf.KeyFile)
+		if err != nil {
+			return nil, err
+		}
 
-	keyPEMBlock, err := ioutil.ReadFile(keyFile)
-	if err != nil {
-		return nil, err
-	}
-
-	cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
-
-	if err != nil {
-		return nil, err
-	}
-
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: secureSkip,
-			Certificates:       []tls.Certificate{cert},
-		},
+		cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
+		if err != nil {
+			return nil, err
+		}
+		tr = ClientTransport(cert)
 	}
 
 	if err := http2.ConfigureTransport(tr); err != nil {
 		return nil, err
 	}
 
-	return &http.Client{
-		Timeout:   HTTP2ClientTimeout,
-		Transport: tr,
-	}, nil
-}
-
-func NewClient(conf config.SectionApns) (*Client, error) {
-	useAuthToken := conf.Kid != "" && conf.TeamID != ""
-	c, err := NewConnection(conf.CertFile, conf.KeyFile, conf.SkipInsecure, useAuthToken)
-	if err != nil {
-		return nil, err
-	}
-
 	client := &Client{
-		Host:         conf.Host,
-		client:       c,
+		Host: conf.Host,
+		client: &http.Client{
+			Timeout:   HTTP2ClientTimeout,
+			Transport: tr,
+		},
 		kid:          conf.Kid,
 		teamID:       conf.TeamID,
 		keyFile:      conf.KeyFile,

@@ -50,7 +50,6 @@ type SectionProvider struct {
 // SectionApns is the configure which is loaded from gunfish.toml
 type SectionApns struct {
 	Host                string
-	SkipInsecure        bool   `toml:"skip_insecure"`
 	CertFile            string `toml:"cert_file"`
 	KeyFile             string `toml:"key_file"`
 	Kid                 string `toml:"kid"`

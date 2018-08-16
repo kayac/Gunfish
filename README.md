@@ -171,7 +171,6 @@ max_connections = 2000
 error_hook = "echo -e 'Hello Gunfish at error hook!'"
 
 [apns]
-skip_insecure = true
 key_file = "/path/to/server.key"
 cert_file = "/path/to/server.crt"
 
@@ -186,7 +185,6 @@ worker_num       |optional| Number of Gunfish owns http clients.
 queue_size       |optional| Limit number of posted JSON from the developer application.
 max_request_size |optional| Limit size of Posted JSON array.
 max_connections  |optional| Max connections
-skip_insecure    |optional| Controls whether a client verifies the server's certificate chain and host name.
 key_file         |required| The key file path.
 cert_file        |required| The cert file path.
 error_hook       |optional| Error hook command. This command runs when Gunfish catches an error response.
