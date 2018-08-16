@@ -1,7 +1,7 @@
 GIT_VER:=$(shell git describe --tags)
 DATE:=$(shell date +%Y-%m-%dT%H:%M:%SZ)
 
-.PHONY: test get-deps install clean
+.PHONY: test get-deps install clean apnscli
 
 all: test
 
@@ -44,3 +44,6 @@ clean:
 
 build:
 	go build -gcflags="-trimpath=${HOME}" -ldflags="-w" cmd/gunfish/gunfish.go
+
+apnscli:
+	go build -gcflags="-trimpath=${HOME}" -ldflags="-w" test/tools/apnscli/apnscli.go
