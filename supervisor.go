@@ -159,7 +159,7 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 			fc *fcm.Client
 		)
 		if conf.Apns.Enabled {
-			ac, err = apns.NewClient(conf.Apns)
+			ac, err = apns.NewClient(conf.Apns.Host, conf.Apns.CertFile, conf.Apns.KeyFile)
 			if err != nil {
 				LogWithFields(logrus.Fields{
 					"type": "supervisor",

@@ -94,7 +94,7 @@ func (ac *Client) NewRequest(token string, h *Header, payload Payload) (*http.Re
 }
 
 // NewConnection establishes a http2 connection
-func NewConnection(certFile, keyFile string, secuskip bool) (*http.Client, error) {
+func NewConnection(certFile, keyFile string) (*http.Client, error) {
 	certPEMBlock, err := ioutil.ReadFile(certFile)
 	if err != nil {
 		return nil, err
@@ -113,8 +113,7 @@ func NewConnection(certFile, keyFile string, secuskip bool) (*http.Client, error
 
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: secuskip,
-			Certificates:       []tls.Certificate{cert},
+			Certificates: []tls.Certificate{cert},
 		},
 	}
 
@@ -128,8 +127,8 @@ func NewConnection(certFile, keyFile string, secuskip bool) (*http.Client, error
 	}, nil
 }
 
-func NewClient(host, cert, key string, skipInsecure bool) (*Client, error) {
-	c, err := NewConnection(cert, key, skipInsecure)
+func NewClient(host, cert, key string) (*Client, error) {
+	c, err := NewConnection(cert, key)
 	if err != nil {
 		return nil, err
 	}
