@@ -18,6 +18,14 @@ const (
 	HTTP2ClientTimeout = time.Second * 10
 )
 
+var ClientTransport = func(cert tls.Certificate) *http.Transport {
+	return &http.Transport{
+		TLSClientConfig: &tls.Config{
+			Certificates: []tls.Certificate{cert},
+		},
+	}
+}
+
 // Client is apns client
 type Client struct {
 	Host   string
@@ -93,8 +101,7 @@ func (ac *Client) NewRequest(token string, h *Header, payload Payload) (*http.Re
 	return nreq, err
 }
 
-// NewConnection establishes a http2 connection
-func NewConnection(certFile, keyFile string) (*http.Client, error) {
+func NewClient(host, certFile, keyFile string) (*Client, error) {
 	certPEMBlock, err := ioutil.ReadFile(certFile)
 	if err != nil {
 		return nil, err
@@ -106,34 +113,20 @@ func NewConnection(certFile, keyFile string) (*http.Client, error) {
 	}
 
 	cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
-
 	if err != nil {
 		return nil, err
 	}
 
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			Certificates: []tls.Certificate{cert},
-		},
-	}
-
+	tr := ClientTransport(cert)
 	if err := http2.ConfigureTransport(tr); err != nil {
 		return nil, err
 	}
 
-	return &http.Client{
-		Timeout:   HTTP2ClientTimeout,
-		Transport: tr,
-	}, nil
-}
-
-func NewClient(host, cert, key string) (*Client, error) {
-	c, err := NewConnection(cert, key)
-	if err != nil {
-		return nil, err
-	}
 	return &Client{
-		Host:   host,
-		client: c,
+		Host: host,
+		client: &http.Client{
+			Timeout:   HTTP2ClientTimeout,
+			Transport: tr,
+		},
 	}, nil
 }

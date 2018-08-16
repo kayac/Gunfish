@@ -2,6 +2,7 @@ package gunfish
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -17,6 +18,14 @@ import (
 )
 
 func init() {
+	apns.ClientTransport = func(cert tls.Certificate) *http.Transport {
+		return &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+				Certificates:       []tls.Certificate{cert},
+			},
+		}
+	}
 	InitErrorResponseHandler(DefaultResponseHandler{hook: `cat `})
 	InitSuccessResponseHandler(DefaultResponseHandler{})
 	logrus.SetLevel(logrus.WarnLevel)
