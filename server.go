@@ -15,6 +15,7 @@ import (
 
 	"github.com/fukata/golang-stats-api-handler"
 	"github.com/kayac/Gunfish/apns"
+	"github.com/kayac/Gunfish/config"
 	"github.com/kayac/Gunfish/fcm"
 	"github.com/lestrrat/go-server-starter/listener"
 	"github.com/shogo82148/go-gracedown"
@@ -51,7 +52,7 @@ func (rh DefaultResponseHandler) HookCmd() string {
 }
 
 // StartServer starts an apns provider server on http.
-func StartServer(conf Config, env Environment) {
+func StartServer(conf config.Config, env Environment) {
 	// Initialize DefaultResponseHandler if response handlers are not defined.
 	if successResponseHandler == nil {
 		InitSuccessResponseHandler(DefaultResponseHandler{})
@@ -137,13 +138,13 @@ func StartServer(conf Config, env Environment) {
 	}).Infof("Starts provider on :%d ...", conf.Provider.Port)
 
 	mux := http.NewServeMux()
-	if conf.Apns.enabled {
+	if conf.Apns.Enabled {
 		LogWithFields(logrus.Fields{
 			"type": "provider",
 		}).Infof("Enable endpoint /push/apns")
 		mux.HandleFunc("/push/apns", prov.pushAPNsHandler())
 	}
-	if conf.FCM.enabled {
+	if conf.FCM.Enabled {
 		LogWithFields(logrus.Fields{
 			"type": "provider",
 		}).Infof("Enable endpoint /push/fcm")
@@ -342,8 +343,8 @@ func validatePostedData(ps []PostedData) error {
 		return fmt.Errorf("PostedData must not be empty: %v", ps)
 	}
 
-	if len(ps) > MaxRequestSize {
-		return fmt.Errorf("PostedData was too long. Be less than %d: %v", MaxRequestSize, len(ps))
+	if len(ps) > config.MaxRequestSize {
+		return fmt.Errorf("PostedData was too long. Be less than %d: %v", config.MaxRequestSize, len(ps))
 	}
 
 	for _, p := range ps {

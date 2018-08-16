@@ -1,4 +1,4 @@
-package gunfish
+package config
 
 import (
 	"os"
@@ -10,7 +10,7 @@ func TestLoadTomlConfigFile(t *testing.T) {
 		t.Error(err)
 	}
 
-	c, err := LoadConfig("./test/gunfish_test.toml")
+	c, err := LoadConfig("../test/gunfish_test.toml")
 	if err != nil {
 		t.Error(err)
 	}

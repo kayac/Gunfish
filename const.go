@@ -4,17 +4,6 @@ import (
 	"time"
 )
 
-// Limit values
-const (
-	MaxWorkerNum           = 119   // Maximum of worker number
-	MinWorkerNum           = 1     // Minimum of worker number
-	MaxQueueSize           = 40960 // Maximum queue size.
-	MinQueueSize           = 128   // Minimum Queue size.
-	MaxRequestSize         = 5000  // Maximum of requset count.
-	MinRequestSize         = 1     // Minimum of request size.
-	LimitApnsTokenByteSize = 100   // Payload byte size.
-)
-
 // Default values
 const (
 	// SendRetryCount is the threashold which is resend count.
@@ -27,12 +16,6 @@ const (
 	SenderNum     = 20
 	RequestPerSec = 2000
 
-	// Default array size of posted data. If not configures at file, this value is set.
-	DefaultRequestQueueSize = 2000
-	// Default port number of provider server
-	DefaultPort = 8003
-	// Default supervisor's queue size. If not configures at file, this value is set.
-	DefaultQueueSize = 1000
 	// About the average time of response from apns. That value is not accurate
 	// because that is defined heuristically in Japan.
 	AverageResponseTime = time.Millisecond * 150

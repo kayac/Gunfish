@@ -20,7 +20,7 @@ func BenchmarkGunfish(b *testing.B) {
 
 	b.StopTimer()
 	go func() {
-		StartServer(config, Test)
+		StartServer(conf, Test)
 	}()
 	time.Sleep(time.Second * 1)
 
@@ -44,7 +44,7 @@ func BenchmarkGunfish(b *testing.B) {
 }
 
 func do(jsons *bytes.Buffer) error {
-	u, err := url.Parse(fmt.Sprintf("http://localhost:%d/push/apns", config.Provider.Port))
+	u, err := url.Parse(fmt.Sprintf("http://localhost:%d/push/apns", conf.Provider.Port))
 	if err != nil {
 		return err
 	}
