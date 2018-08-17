@@ -3,6 +3,7 @@ package mock
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -46,10 +47,10 @@ func APNsMockServer(verbose bool) *http.ServeMux {
 		if len(([]byte(token))) > LimitApnsTokenByteSize || token == "baddevicetoken" {
 			w.Header().Set("apns-id", "apns-id")
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, createErrorResponse(apns.BadDeviceToken, http.StatusBadRequest))
+			createErrorResponse(w, apns.BadDeviceToken, http.StatusBadRequest)
 		} else if token == "missingtopic" {
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, createErrorResponse(apns.MissingTopic, http.StatusBadRequest))
+			createErrorResponse(w, apns.MissingTopic, http.StatusBadRequest)
 		} else if token == "unregistered" {
 			// If the value in the :status header is 410, the value of this key is
 			// the last time at which APNs confirmed that the device token was
@@ -58,10 +59,10 @@ func APNsMockServer(verbose bool) *http.ServeMux {
 			// Stop pushing notifications until the device registers a token with
 			// a later timestamp with your provider.
 			w.WriteHeader(http.StatusGone)
-			fmt.Fprint(w, createErrorResponse(apns.Unregistered, http.StatusGone))
+			createErrorResponse(w, apns.Unregistered, http.StatusGone)
 		} else if token == "expiredprovidertoken" {
 			w.WriteHeader(http.StatusForbidden)
-			fmt.Fprint(w, createErrorResponse(apns.ExpiredProviderToken, http.StatusForbidden))
+			createErrorResponse(w, apns.ExpiredProviderToken, http.StatusForbidden)
 		} else {
 			w.Header().Set("apns-id", "apns-id")
 			w.WriteHeader(http.StatusOK)
@@ -73,7 +74,8 @@ func APNsMockServer(verbose bool) *http.ServeMux {
 	return mux
 }
 
-func createErrorResponse(ermsg apns.ErrorResponseCode, status int) string {
+func createErrorResponse(w io.Writer, ermsg apns.ErrorResponseCode, status int) error {
+	enc := json.NewEncoder(w)
 	var er apns.ErrorResponse
 	if status == http.StatusGone {
 		er = apns.ErrorResponse{
@@ -85,8 +87,7 @@ func createErrorResponse(ermsg apns.ErrorResponseCode, status int) string {
 			Reason: ermsg.String(),
 		}
 	}
-	der, _ := json.Marshal(er)
-	return string(der)
+	return enc.Encode(er)
 }
 
 func reqtime(start time.Time) float64 {
