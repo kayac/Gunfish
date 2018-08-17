@@ -76,10 +76,12 @@ func CreateJWT(keyFile string, kid string, teamID string, now time.Time) (string
 
 func writeAsBase64(w io.Writer, byt []byte) error {
 	enc := base64.NewEncoder(base64.RawURLEncoding, w)
+	defer enc.Close()
+
 	if _, err := enc.Write(byt); err != nil {
 		return err
 	}
-	return enc.Close()
+	return nil
 }
 
 func createSignature(payload []byte, keyFile string) ([]byte, error) {
