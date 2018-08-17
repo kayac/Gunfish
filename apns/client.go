@@ -39,7 +39,7 @@ type Client struct {
 	authToken    authToken
 	kid          string
 	teamID       string
-	keyFile      string
+	key          []byte
 	useAuthToken bool
 }
 
@@ -128,7 +128,7 @@ func (ac *Client) issueToken() error {
 	var err error
 	now := time.Now()
 
-	ac.authToken.jwt, err = CreateJWT(ac.keyFile, ac.kid, ac.teamID, now)
+	ac.authToken.jwt, err = CreateJWT(ac.key, ac.kid, ac.teamID, now)
 	if err != nil {
 		return err
 	}
@@ -161,6 +161,11 @@ func NewClient(conf config.SectionApns) (*Client, error) {
 		return nil, err
 	}
 
+	key, err := ioutil.ReadFile(conf.KeyFile)
+	if err != nil {
+		return nil, err
+	}
+
 	client := &Client{
 		Host: conf.Host,
 		client: &http.Client{
@@ -169,7 +174,7 @@ func NewClient(conf config.SectionApns) (*Client, error) {
 		},
 		kid:          conf.Kid,
 		teamID:       conf.TeamID,
-		keyFile:      conf.KeyFile,
+		key:          key,
 		useAuthToken: useAuthToken,
 	}
 	if client.useAuthToken {

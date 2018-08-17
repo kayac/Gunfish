@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"io"
-	"io/ioutil"
 	"math/big"
 	"time"
 )
@@ -34,7 +33,7 @@ type ecdsaSignature struct {
 	R, S *big.Int
 }
 
-func CreateJWT(keyFile string, kid string, teamID string, now time.Time) (string, error) {
+func CreateJWT(key []byte, kid string, teamID string, now time.Time) (string, error) {
 	var b bytes.Buffer
 	b.Grow(jwtDefaultGrowSize)
 
@@ -63,7 +62,7 @@ func CreateJWT(keyFile string, kid string, teamID string, now time.Time) (string
 		return "", err
 	}
 
-	sig, err := createSignature(b.Bytes(), keyFile)
+	sig, err := createSignature(b.Bytes(), key)
 	if err != nil {
 		return "", err
 	}
@@ -86,24 +85,20 @@ func writeAsBase64(w io.Writer, byt []byte) error {
 	return nil
 }
 
-func createSignature(payload []byte, keyFile string) ([]byte, error) {
+func createSignature(payload []byte, key []byte) ([]byte, error) {
 	h := crypto.SHA256.New()
 	if _, err := h.Write(payload); err != nil {
 		return nil, err
 	}
 	msg := h.Sum(nil)
 
-	data, err := ioutil.ReadFile(keyFile)
-	if err != nil {
-		return nil, err
-	}
-	block, _ := pem.Decode(data)
-	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	block, _ := pem.Decode(key)
+	p8key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
 		return nil, err
 	}
 
-	r, s, err := ecdsa.Sign(rand.Reader, key.(*ecdsa.PrivateKey), msg)
+	r, s, err := ecdsa.Sign(rand.Reader, p8key.(*ecdsa.PrivateKey), msg)
 	if err != nil {
 		return nil, err
 	}
