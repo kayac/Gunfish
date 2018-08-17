@@ -31,11 +31,9 @@ gen-cert:
 	test/scripts/gen_test_cert.sh
 
 test: gen-cert
-	nohup h2o -c config/h2o/h2o.conf > h2o_access.log &
-	go test -v ./apns || ( pkill h2o && exit 1 )
-	go test -v ./fcm || ( pkill h2o && exit 1 )
-	go test -v . || ( pkill h2o && exit 1 )
-	pkill h2o
+	go test -v ./apns
+	go test -v ./fcm
+	go test -v .
 
 clean:
 	rm -f cmd/gunfish/gunfish
@@ -44,3 +42,6 @@ clean:
 
 build:
 	go build -gcflags="-trimpath=${HOME}" -ldflags="-w" cmd/gunfish/gunfish.go
+
+tools/%:
+	go build -gcflags="-trimpath=${HOME}" -ldflags="-w" test/tools/$*/$*.go

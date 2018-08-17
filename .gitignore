@@ -27,6 +27,6 @@ _testmain.go
 /conf/gunfish.toml
 /gunfish
 /shotgun
+/apnsmock
 /test/server*
-/h2o_access.log
 /pkg

@@ -8,28 +8,46 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/kayac/Gunfish/apns"
 	"github.com/kayac/Gunfish/config"
+	"github.com/kayac/Gunfish/mock"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/net/http2"
 )
 
-func init() {
-	apns.ClientTransport = func(cert tls.Certificate) *http.Transport {
-		return &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-				Certificates:       []tls.Certificate{cert},
-			},
+func TestMain(m *testing.M) {
+	runner := func() int {
+		apns.ClientTransport = func(cert tls.Certificate) *http.Transport {
+			return &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+					Certificates:       []tls.Certificate{cert},
+				},
+			}
 		}
+		InitErrorResponseHandler(DefaultResponseHandler{hook: `cat `})
+		InitSuccessResponseHandler(DefaultResponseHandler{})
+		logrus.SetLevel(logrus.WarnLevel)
+
+		ts := httptest.NewUnstartedServer(mock.APNsMockServer(false))
+		if err := http2.ConfigureServer(ts.Config, nil); err != nil {
+			return 1
+		}
+		ts.TLS = ts.Config.TLSConfig
+		ts.StartTLS()
+		conf.Apns.Host = ts.URL
+
+		code := m.Run()
+
+		return code
 	}
-	InitErrorResponseHandler(DefaultResponseHandler{hook: `cat `})
-	InitSuccessResponseHandler(DefaultResponseHandler{})
-	logrus.SetLevel(logrus.WarnLevel)
-	conf.Apns.Host = MockServer
+
+	os.Exit(runner())
 }
 
 func TestInvalidCertification(t *testing.T) {
