@@ -22,12 +22,15 @@ func APNsMockServer(verbose bool) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/3/device/", func(w http.ResponseWriter, r *http.Request) {
-		if verbose {
-			log.Printf("proto:%s method:%s path:%s host:%s", r.Proto, r.Method, r.URL.Path, r.RemoteAddr)
-		}
+		start := time.Now()
+		defer func() {
+			if verbose {
+				log.Printf("reqtime:%f proto:%s method:%s path:%s host:%s", reqtime(start), r.Proto, r.Method, r.URL.Path, r.RemoteAddr)
+			}
+		}()
 
 		// sets the response time from apns server
-		time.Sleep(time.Millisecond*200 + time.Millisecond*(time.Duration(rand.Int63n(90))-45))
+		time.Sleep(time.Millisecond*200 + time.Millisecond*(time.Duration(rand.Int63n(200)-100)))
 
 		// only allow path which pattern is '/3/device/:token'
 		splitPath := strings.Split(r.URL.Path, "/")
@@ -84,4 +87,9 @@ func createErrorResponse(ermsg apns.ErrorResponseCode, status int) string {
 	}
 	der, _ := json.Marshal(er)
 	return string(der)
+}
+
+func reqtime(start time.Time) float64 {
+	diff := time.Now().Sub(start)
+	return diff.Seconds()
 }
