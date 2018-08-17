@@ -18,6 +18,8 @@ import (
 
 // https://developer.apple.com/library/content/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/CommunicatingwithAPNs.html#//apple_ref/doc/uid/TP40008194-CH11-SW1
 
+const jwtDefaultGrowSize = 256
+
 type jwtHeader struct {
 	Alg string `json:"alg"`
 	Kid string `json:"kid"`
@@ -33,8 +35,8 @@ type ecdsaSignature struct {
 }
 
 func CreateJWT(keyFile string, kid string, teamID string, now time.Time) (string, error) {
-
 	var b bytes.Buffer
+	b.Grow(jwtDefaultGrowSize)
 
 	header := jwtHeader{
 		Alg: "ES256",
@@ -47,7 +49,7 @@ func CreateJWT(keyFile string, kid string, teamID string, now time.Time) (string
 	if err := writeAsBase64(&b, headerJSON); err != nil {
 		return "", err
 	}
-	b.WriteString(".")
+	b.WriteByte(byte('.'))
 
 	claim := jwtClaim{
 		Iss: teamID,
@@ -65,7 +67,7 @@ func CreateJWT(keyFile string, kid string, teamID string, now time.Time) (string
 	if err != nil {
 		return "", err
 	}
-	b.WriteString(".")
+	b.WriteByte(byte('.'))
 
 	if err := writeAsBase64(&b, sig); err != nil {
 		return "", err
