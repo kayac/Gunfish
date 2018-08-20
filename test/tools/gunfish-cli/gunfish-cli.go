@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -21,6 +22,7 @@ func main() {
 func run() error {
 
 	var (
+		typ       string
 		port      int
 		host      string
 		apnsTopic string
@@ -34,6 +36,7 @@ func run() error {
 		jsonFile  string
 	)
 
+	flag.StringVar(&typ, "type", "apns", "push notification type. 'apns' or 'fcm' (fcm not implemented)")
 	flag.IntVar(&count, "count", 1, "send count")
 	flag.IntVar(&port, "port", 8003, "gunfish port")
 	flag.StringVar(&host, "host", "localhost", "gunfish host")
@@ -47,6 +50,15 @@ func run() error {
 	flag.StringVar(&jsonFile, "json-file", "", "json input file")
 
 	flag.Parse()
+
+	switch typ {
+	case "apns":
+		// OK
+	case "fcm":
+		return errors.New("[ERROR] not implemented")
+	default:
+		return errors.New("[ERROR] wrong push notification type")
+	}
 
 	if verbose {
 		log.Printf("host: %s, port: %d, send count: %d", host, port, count)

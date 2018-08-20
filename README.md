@@ -299,18 +299,18 @@ $ make test
 ```
 
 The following tools are useful to send requests to gunfish for test the following.
-- apnscli (send push notification for APNs test APNs)
+- gunfish-cli (send push notification to Gunfish for test)
 - apnsmock (APNs mock server)
 
 ```
-$ make tools/apnscli
+$ make tools/gunfish-cli
 $ make tools/apnsmock
 ```
 
-- send a request example with apnscli
+- send a request example with gunfish-cli
 ```
-$ ./apnscli -count 1 -json-file some.json -verbose
-$ ./apnscli -count 1 -token <device token> -apns-topic <your topic> -options key1=val1,key2=val2 -verbose
+$ ./gunfish-cli -type apns -count 1 -json-file some.json -verbose
+$ ./gunfish-cli -type apns -count 1 -token <device token> -apns-topic <your topic> -options key1=val1,key2=val2 -verbose
 ```
 
 - start apnsmock server
