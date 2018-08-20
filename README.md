@@ -289,10 +289,6 @@ InitErrorResponseHandler(CustomYourErrorHandler{hookCmd: "echo 'on error!'"})
 You can implement a success custom handler in the same way but a hook command is not executed in the success handler in order not to make cpu resource too tight.
 
 ### Test
-To do test for Gunfish, you have to install [h2o](https://h2o.examp1e.net/). **h2o** is used as APNS mock server. So, if you want to test or optimize parameters for your application, you need to prepare the envronment that h2o APNs Mock server works.
-
-Moreover, you have to build h2o with **mruby-sleep** mrbgem.
-
 
 ```
 $ make test
@@ -322,7 +318,8 @@ $ ./apnsmock -cert-file ./test/server.crt -key-file ./test/server.key -verbose
 Gunfish repository includes Lua script for the benchmark. You can use wrk command with `err_and_success.lua` script.
 
 ```
-$ h2o -c conf/h2o/h2o.conf &
+$ make tools/apnsmock
+$ ./apnsmock -cert-file ./test/server.crt -key-file ./test/server.key -verbosea &
 $ ./gunfish -c test/gunfish_test.toml -E test
 $ wrk2 -t2 -c20 -s bench/scripts/err_and_success.lua -L -R100 http://localhost:38103
 ```
