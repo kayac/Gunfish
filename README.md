@@ -298,6 +298,26 @@ Moreover, you have to build h2o with **mruby-sleep** mrbgem.
 $ make test
 ```
 
+The following tools are useful to send requests to gunfish for test the following.
+- gunfish-cli (send push notification to Gunfish for test)
+- apnsmock (APNs mock server)
+
+```
+$ make tools/gunfish-cli
+$ make tools/apnsmock
+```
+
+- send a request example with gunfish-cli
+```
+$ ./gunfish-cli -type apns -count 1 -json-file some.json -verbose
+$ ./gunfish-cli -type apns -count 1 -token <device token> -apns-topic <your topic> -options key1=val1,key2=val2 -verbose
+```
+
+- start apnsmock server
+```
+$ ./apnsmock -cert-file ./test/server.crt -key-file ./test/server.key -verbose
+```
+
 ### Benchmark
 Gunfish repository includes Lua script for the benchmark. You can use wrk command with `err_and_success.lua` script.
 

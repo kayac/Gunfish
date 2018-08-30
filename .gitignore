@@ -24,9 +24,9 @@ _testmain.go
 *.prof
 
 # User specific
-/conf/gunfish.toml
+/config/gunfish.toml
 /gunfish
-/shotgun
+/gunfish-cli
 /apnsmock
 /test/server*
 /pkg
