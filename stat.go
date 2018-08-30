@@ -3,6 +3,8 @@ package gunfish
 import (
 	"os"
 	"time"
+
+	"github.com/kayac/Gunfish/config"
 )
 
 // Stats stores metrics
@@ -28,7 +30,7 @@ type Stats struct {
 }
 
 // NewStats initialize Stats
-func NewStats(conf Config) Stats {
+func NewStats(conf config.Config) Stats {
 	return Stats{
 		Pid:                 os.Getpid(),
 		StartAt:             time.Now().Unix(),
@@ -42,6 +44,8 @@ func (st *Stats) GetStats() *Stats {
 	preUptime := st.Uptime
 	st.Uptime = time.Now().Unix() - st.StartAt
 	st.Period = st.Uptime - preUptime
-	st.CertificateExpireUntil = int64(st.CertificateNotAfter.Sub(time.Now()).Seconds())
+	if !st.CertificateNotAfter.IsZero() {
+		st.CertificateExpireUntil = int64(st.CertificateNotAfter.Sub(time.Now()).Seconds())
+	}
 	return st
 }

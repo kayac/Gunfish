@@ -171,7 +171,6 @@ max_connections = 2000
 error_hook = "echo -e 'Hello Gunfish at error hook!'"
 
 [apns]
-skip_insecure = true
 key_file = "/path/to/server.key"
 cert_file = "/path/to/server.crt"
 
@@ -186,7 +185,6 @@ worker_num       |optional| Number of Gunfish owns http clients.
 queue_size       |optional| Limit number of posted JSON from the developer application.
 max_request_size |optional| Limit size of Posted JSON array.
 max_connections  |optional| Max connections
-skip_insecure    |optional| Controls whether a client verifies the server's certificate chain and host name.
 key_file         |required| The key file path.
 cert_file        |required| The cert file path.
 error_hook       |optional| Error hook command. This command runs when Gunfish catches an error response.
@@ -291,20 +289,37 @@ InitErrorResponseHandler(CustomYourErrorHandler{hookCmd: "echo 'on error!'"})
 You can implement a success custom handler in the same way but a hook command is not executed in the success handler in order not to make cpu resource too tight.
 
 ### Test
-To do test for Gunfish, you have to install [h2o](https://h2o.examp1e.net/). **h2o** is used as APNS mock server. So, if you want to test or optimize parameters for your application, you need to prepare the envronment that h2o APNs Mock server works.
-
-Moreover, you have to build h2o with **mruby-sleep** mrbgem.
-
 
 ```
 $ make test
+```
+
+The following tools are useful to send requests to gunfish for test the following.
+- gunfish-cli (send push notification to Gunfish for test)
+- apnsmock (APNs mock server)
+
+```
+$ make tools/gunfish-cli
+$ make tools/apnsmock
+```
+
+- send a request example with gunfish-cli
+```
+$ ./gunfish-cli -type apns -count 1 -json-file some.json -verbose
+$ ./gunfish-cli -type apns -count 1 -token <device token> -apns-topic <your topic> -options key1=val1,key2=val2 -verbose
+```
+
+- start apnsmock server
+```
+$ ./apnsmock -cert-file ./test/server.crt -key-file ./test/server.key -verbose
 ```
 
 ### Benchmark
 Gunfish repository includes Lua script for the benchmark. You can use wrk command with `err_and_success.lua` script.
 
 ```
-$ h2o -c conf/h2o/h2o.conf &
+$ make tools/apnsmock
+$ ./apnsmock -cert-file ./test/server.crt -key-file ./test/server.key -verbosea &
 $ ./gunfish -c test/gunfish_test.toml -E test
 $ wrk2 -t2 -c20 -s bench/scripts/err_and_success.lua -L -R100 http://localhost:38103
 ```

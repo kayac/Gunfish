@@ -1,4 +1,4 @@
-package gunfish
+package config
 
 import (
 	"crypto/tls"
@@ -7,7 +7,26 @@ import (
 	"time"
 
 	goconf "github.com/kayac/go-config"
-	"github.com/sirupsen/logrus"
+)
+
+// Limit values
+const (
+	MaxWorkerNum           = 119   // Maximum of worker number
+	MinWorkerNum           = 1     // Minimum of worker number
+	MaxQueueSize           = 40960 // Maximum queue size.
+	MinQueueSize           = 128   // Minimum Queue size.
+	MaxRequestSize         = 5000  // Maximum of requset count.
+	MinRequestSize         = 1     // Minimum of request size.
+	LimitApnsTokenByteSize = 100   // Payload byte size.
+)
+
+const (
+	// Default array size of posted data. If not configures at file, this value is set.
+	DefaultRequestQueueSize = 2000
+	// Default port number of provider server
+	DefaultPort = 8003
+	// Default supervisor's queue size. If not configures at file, this value is set.
+	DefaultQueueSize = 1000
 )
 
 // Config is the configure of an APNS provider server
@@ -31,17 +50,18 @@ type SectionProvider struct {
 // SectionApns is the configure which is loaded from gunfish.toml
 type SectionApns struct {
 	Host                string
-	SkipInsecure        bool   `toml:"skip_insecure"`
 	CertFile            string `toml:"cert_file"`
 	KeyFile             string `toml:"key_file"`
+	Kid                 string `toml:"kid"`
+	TeamID              string `toml:"team_id"`
 	CertificateNotAfter time.Time
-	enabled             bool
+	Enabled             bool
 }
 
 // SectionFCM is the configuration of fcm
 type SectionFCM struct {
 	APIKey  string `toml:"api_key"`
-	enabled bool
+	Enabled bool
 }
 
 // DefaultLoadConfig loads default /etc/gunfish.toml
@@ -54,7 +74,6 @@ func LoadConfig(fn string) (Config, error) {
 	var config Config
 
 	if err := goconf.LoadWithEnvTOML(&config, fn); err != nil {
-		LogWithFields(logrus.Fields{"type": "load_config"}).Warnf("%v %s %s", config, err, fn)
 		return config, err
 	}
 
@@ -73,7 +92,6 @@ func LoadConfig(fn string) (Config, error) {
 
 	// validates config parameters
 	if err := (&config).validateConfig(); err != nil {
-		LogWithFields(logrus.Fields{"type": "load_config"}).Error(err)
 		return config, err
 	}
 
@@ -81,14 +99,17 @@ func LoadConfig(fn string) (Config, error) {
 }
 
 func (c *Config) validateConfig() error {
-	if c.Apns.CertFile != "" && c.Apns.KeyFile != "" {
-		c.Apns.enabled = true
-		if err := c.validateConfigApns(); err != nil {
+	if err := c.validateConfigProvider(); err != nil {
+		return err
+	}
+	if (c.Apns.CertFile != "" && c.Apns.KeyFile != "") || (c.Apns.TeamID != "" && c.Apns.Kid != "") {
+		c.Apns.Enabled = true
+		if err := c.validateConfigAPNs(); err != nil {
 			return err
 		}
 	}
 	if c.FCM.APIKey != "" {
-		c.FCM.enabled = true
+		c.FCM.Enabled = true
 		if err := c.validateConfigFCM(); err != nil {
 			return err
 		}
@@ -96,31 +117,7 @@ func (c *Config) validateConfig() error {
 	return nil
 }
 
-func (c *Config) validateConfigFCM() error {
-	return nil
-}
-
-func (c *Config) validateConfigApns() error {
-	// check certificate files and expiration
-	cert, err := tls.LoadX509KeyPair(c.Apns.CertFile, c.Apns.KeyFile)
-	if err != nil {
-		return fmt.Errorf("Invalid certificate pair for APNS: %s", err)
-	}
-	now := time.Now()
-	for _, _ct := range cert.Certificate {
-		ct, err := x509.ParseCertificate(_ct)
-		if err != nil {
-			return fmt.Errorf("Cannot parse X509 certificate")
-		}
-		if now.Before(ct.NotBefore) || now.After(ct.NotAfter) {
-			return fmt.Errorf("Certificate is expired. Subject: %s, NotBefore: %s, NotAfter: %s", ct.Subject, ct.NotBefore, ct.NotAfter)
-		}
-		if c.Apns.CertificateNotAfter.IsZero() || c.Apns.CertificateNotAfter.Before(ct.NotAfter) {
-			// hold minimum not after
-			c.Apns.CertificateNotAfter = ct.NotAfter
-		}
-	}
-
+func (c *Config) validateConfigProvider() error {
 	if c.Provider.RequestQueueSize < MinRequestSize || c.Provider.RequestQueueSize > MaxRequestSize {
 		return fmt.Errorf("MaxRequestSize was out of available range: %d. (%d-%d)", c.Provider.RequestQueueSize,
 			MinRequestSize, MaxRequestSize)
@@ -136,5 +133,34 @@ func (c *Config) validateConfigApns() error {
 			MinWorkerNum, MaxWorkerNum)
 	}
 
+	return nil
+}
+
+func (c *Config) validateConfigFCM() error {
+	return nil
+}
+
+func (c *Config) validateConfigAPNs() error {
+	if c.Apns.CertFile != "" && c.Apns.KeyFile != "" {
+		// check certificate files and expiration
+		cert, err := tls.LoadX509KeyPair(c.Apns.CertFile, c.Apns.KeyFile)
+		if err != nil {
+			return fmt.Errorf("Invalid certificate pair for APNS: %s", err)
+		}
+		now := time.Now()
+		for _, _ct := range cert.Certificate {
+			ct, err := x509.ParseCertificate(_ct)
+			if err != nil {
+				return fmt.Errorf("Cannot parse X509 certificate")
+			}
+			if now.Before(ct.NotBefore) || now.After(ct.NotAfter) {
+				return fmt.Errorf("Certificate is expired. Subject: %s, NotBefore: %s, NotAfter: %s", ct.Subject, ct.NotBefore, ct.NotAfter)
+			}
+			if c.Apns.CertificateNotAfter.IsZero() || c.Apns.CertificateNotAfter.Before(ct.NotAfter) {
+				// hold minimum not after
+				c.Apns.CertificateNotAfter = ct.NotAfter
+			}
+		}
+	}
 	return nil
 }

@@ -2,28 +2,56 @@ package gunfish
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/kayac/Gunfish/apns"
+	"github.com/kayac/Gunfish/config"
+	"github.com/kayac/Gunfish/mock"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/net/http2"
 )
 
-func init() {
-	InitErrorResponseHandler(DefaultResponseHandler{hook: `cat `})
-	InitSuccessResponseHandler(DefaultResponseHandler{})
-	logrus.SetLevel(logrus.WarnLevel)
-	config.Apns.Host = MockServer
+func TestMain(m *testing.M) {
+	runner := func() int {
+		apns.ClientTransport = func(cert tls.Certificate) *http.Transport {
+			return &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+					Certificates:       []tls.Certificate{cert},
+				},
+			}
+		}
+		InitErrorResponseHandler(DefaultResponseHandler{hook: `cat `})
+		InitSuccessResponseHandler(DefaultResponseHandler{})
+		logrus.SetLevel(logrus.WarnLevel)
+
+		ts := httptest.NewUnstartedServer(mock.APNsMockServer(false))
+		if err := http2.ConfigureServer(ts.Config, nil); err != nil {
+			return 1
+		}
+		ts.TLS = ts.Config.TLSConfig
+		ts.StartTLS()
+		conf.Apns.Host = ts.URL
+
+		code := m.Run()
+
+		return code
+	}
+
+	os.Exit(runner())
 }
 
 func TestInvalidCertification(t *testing.T) {
-	c, _ := LoadConfig("./test/gunfish_test.toml")
+	c, _ := config.LoadConfig("./test/gunfish_test.toml")
 	c.Apns.CertFile = "./test/invalid.crt"
 	c.Apns.KeyFile = "./test/invalid.key"
 	ss, err := StartSupervisor(&c)
@@ -33,7 +61,7 @@ func TestInvalidCertification(t *testing.T) {
 }
 
 func TestSuccessToPostJson(t *testing.T) {
-	sup, _ := StartSupervisor(&config)
+	sup, _ := StartSupervisor(&conf)
 	prov := &Provider{sup: sup}
 	handler := prov.pushAPNsHandler()
 
@@ -67,7 +95,7 @@ func TestSuccessToPostJson(t *testing.T) {
 }
 
 func TestFailedToPostInvalidJson(t *testing.T) {
-	sup, _ := StartSupervisor(&config)
+	sup, _ := StartSupervisor(&conf)
 	prov := &Provider{sup: sup}
 	handler := prov.pushFCMHandler()
 
@@ -91,7 +119,7 @@ func TestFailedToPostInvalidJson(t *testing.T) {
 }
 
 func TestFailedToPostMalformedJson(t *testing.T) {
-	sup, _ := StartSupervisor(&config)
+	sup, _ := StartSupervisor(&conf)
 	prov := &Provider{sup: sup}
 	handler := prov.pushAPNsHandler()
 
@@ -133,15 +161,15 @@ func TestFailedToPostMalformedJson(t *testing.T) {
 }
 
 func TestEnqueueTooManyRequest(t *testing.T) {
-	sup, _ := StartSupervisor(&config)
+	sup, _ := StartSupervisor(&conf)
 	prov := &Provider{sup: sup}
-	srvStats = NewStats(config)
+	srvStats = NewStats(conf)
 	handler := prov.pushAPNsHandler()
 
 	// When queue stack is full, return 503
 	var manyNum int
-	tp := ((config.Provider.RequestQueueSize * int(AverageResponseTime/time.Millisecond)) / 1000) / SenderNum
-	dif := (RequestPerSec - config.Provider.RequestQueueSize/tp)
+	tp := ((conf.Provider.RequestQueueSize * int(AverageResponseTime/time.Millisecond)) / 1000) / SenderNum
+	dif := (RequestPerSec - conf.Provider.RequestQueueSize/tp)
 	if dif > 0 {
 		manyNum = dif * int(FlowRateInterval/time.Second) * 2
 	} else {
@@ -198,12 +226,12 @@ func TestEnqueueTooManyRequest(t *testing.T) {
 }
 
 func TestTooLargeRequest(t *testing.T) {
-	sup, _ := StartSupervisor(&config)
+	sup, _ := StartSupervisor(&conf)
 	prov := &Provider{sup: sup}
-	srvStats = NewStats(config)
+	srvStats = NewStats(conf)
 	handler := prov.pushAPNsHandler()
 
-	jsons := createJSONPostedData(MaxRequestSize + 1) // Too many requests
+	jsons := createJSONPostedData(config.MaxRequestSize + 1) // Too many requests
 	r, err := newRequest(jsons, "POST", ApplicationJSON)
 	if err != nil {
 		t.Errorf("%s", err)
@@ -219,7 +247,7 @@ func TestTooLargeRequest(t *testing.T) {
 }
 
 func TestMethodNotAllowed(t *testing.T) {
-	sup, _ := StartSupervisor(&config)
+	sup, _ := StartSupervisor(&conf)
 	prov := &Provider{sup: sup}
 	handler := prov.pushAPNsHandler()
 
@@ -239,7 +267,7 @@ func TestMethodNotAllowed(t *testing.T) {
 }
 
 func TestUnsupportedMediaType(t *testing.T) {
-	sup, _ := StartSupervisor(&config)
+	sup, _ := StartSupervisor(&conf)
 	prov := &Provider{sup: sup}
 	handler := prov.pushAPNsHandler()
 
@@ -264,9 +292,9 @@ func TestUnsupportedMediaType(t *testing.T) {
 }
 
 func TestStats(t *testing.T) {
-	sup, _ := StartSupervisor(&config)
+	sup, _ := StartSupervisor(&conf)
 	prov := &Provider{sup: sup}
-	srvStats = NewStats(config)
+	srvStats = NewStats(conf)
 	pushh := prov.pushAPNsHandler()
 	statsh := prov.statsHandler()
 

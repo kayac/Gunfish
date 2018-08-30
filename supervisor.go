@@ -2,6 +2,7 @@ package gunfish
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/kayac/Gunfish/apns"
+	"github.com/kayac/Gunfish/config"
 	"github.com/kayac/Gunfish/fcm"
 	"github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
@@ -78,7 +80,7 @@ func (s *Supervisor) EnqueueClientRequest(reqs *[]Request) error {
 }
 
 // StartSupervisor starts supervisor
-func StartSupervisor(conf *Config) (Supervisor, error) {
+func StartSupervisor(conf *config.Config) (Supervisor, error) {
 	// Calculates each worker queue size to accept requests with a given parameter of requests per sec as flow rate.
 	var wqSize int
 	tp := ((conf.Provider.RequestQueueSize * int(AverageResponseTime/time.Millisecond)) / 1000) / SenderNum
@@ -157,8 +159,8 @@ func StartSupervisor(conf *Config) (Supervisor, error) {
 			ac *apns.Client
 			fc *fcm.Client
 		)
-		if conf.Apns.enabled {
-			ac, err = apns.NewClient(conf.Apns.Host, conf.Apns.CertFile, conf.Apns.KeyFile, conf.Apns.SkipInsecure)
+		if conf.Apns.Enabled {
+			ac, err = apns.NewClient(conf.Apns)
 			if err != nil {
 				LogWithFields(logrus.Fields{
 					"type": "supervisor",
@@ -166,7 +168,7 @@ func StartSupervisor(conf *Config) (Supervisor, error) {
 				break
 			}
 		}
-		if conf.FCM.enabled {
+		if conf.FCM.Enabled {
 			fc, err = fcm.NewClient(conf.FCM.APIKey, nil, fcm.ClientTimeout)
 			if err != nil {
 				LogWithFields(logrus.Fields{
@@ -240,7 +242,7 @@ func (s *Supervisor) Shutdown() {
 	}).Infoln("Stoped supervisor.")
 }
 
-func (s *Supervisor) spawnWorker(w Worker, conf *Config) {
+func (s *Supervisor) spawnWorker(w Worker, conf *config.Config) {
 	atomic.AddInt64(&(srvStats.Workers), 1)
 	defer func() {
 		atomic.AddInt64(&(srvStats.Workers), -1)
@@ -333,24 +335,7 @@ func handleAPNsResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Co
 			onResponse(result, errorResponseHandler.HookCmd(), cmdq)
 		} else {
 			// if 'result' is nil, HTTP connection error with APNS.
-			LogWithFields(logf).Warnf("response is nil. reason: %s", resp.Err.Error())
-			if req.Tries < SendRetryCount {
-				req.Tries++
-				atomic.AddInt64(&(srvStats.RetryCount), 1)
-				logf["resend_cnt"] = req.Tries
-
-				select {
-				case retryq <- req:
-					LogWithFields(logf).
-						Debugf("Retry to enqueue into retryq because of http connection error with APNS.")
-				default:
-					LogWithFields(logf).
-						Warnf("Supervisor retry queue is full.")
-				}
-			} else {
-				LogWithFields(logf).
-					Warnf("Retry count is over than %d. Could not deliver notification.", SendRetryCount)
-			}
+			retry(retryq, req, errors.New("http connection error between APNs"), logf)
 		}
 	} else {
 		atomic.AddInt64(&(srvStats.SentCount), 1)
@@ -361,6 +346,12 @@ func handleAPNsResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Co
 			}
 			if err := result.Err(); err != nil {
 				atomic.AddInt64(&(srvStats.ErrCount), 1)
+
+				// retry when provider auhentication token is expired
+				if err.Error() == apns.ExpiredProviderToken.String() {
+					retry(retryq, req, err, logf)
+				}
+
 				onResponse(result, errorResponseHandler.HookCmd(), cmdq)
 				LogWithFields(logf).Errorf("%s", err)
 			} else {
@@ -570,4 +561,24 @@ func invokePipe(hook string, src io.Reader) ([]byte, error) {
 
 	err = cmd.Run()
 	return b.Bytes(), err
+}
+
+func retry(retryq chan<- Request, req Request, err error, logf logrus.Fields) {
+	if req.Tries < SendRetryCount {
+		req.Tries++
+		atomic.AddInt64(&(srvStats.RetryCount), 1)
+		logf["resend_cnt"] = req.Tries
+
+		select {
+		case retryq <- req:
+			LogWithFields(logf).
+				Debugf("%s: Retry to enqueue into retryq.", err.Error())
+		default:
+			LogWithFields(logf).
+				Warnf("Supervisor retry queue is full.")
+		}
+	} else {
+		LogWithFields(logf).
+			Warnf("Retry count is over than %d. Could not deliver notification.", SendRetryCount)
+	}
 }

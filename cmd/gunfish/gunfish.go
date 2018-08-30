@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"net"
@@ -11,6 +12,8 @@ import (
 	"strconv"
 
 	"github.com/kayac/Gunfish"
+	"github.com/kayac/Gunfish/apns"
+	"github.com/kayac/Gunfish/config"
 	"github.com/sirupsen/logrus"
 )
 
@@ -18,7 +21,7 @@ var version string
 
 func main() {
 	var (
-		config      string
+		confPath    string
 		environment string
 		logFormat   string
 		port        int
@@ -27,8 +30,8 @@ func main() {
 		logLevel    string
 	)
 
-	flag.StringVar(&config, "config", "/etc/gunfish/config.toml", "specify config file.")
-	flag.StringVar(&config, "c", "/etc/gunfish/config.toml", "specify config file.")
+	flag.StringVar(&confPath, "config", "/etc/gunfish/config.toml", "specify config file.")
+	flag.StringVar(&confPath, "c", "/etc/gunfish/config.toml", "specify config file.")
 	flag.StringVar(&environment, "environment", "production", "APNS environment. (production, development, or test)")
 	flag.StringVar(&environment, "E", "production", "APNS environment. (production, development, or test)")
 	flag.IntVar(&port, "port", 0, "Gunfish port number (range 1024-65535).")
@@ -50,7 +53,7 @@ func main() {
 
 	initLogrus(logFormat, logLevel)
 
-	c, err := gunfish.LoadConfig(config)
+	c, err := config.LoadConfig(confPath)
 	if err != nil {
 		logrus.Error(err)
 		os.Exit(1)
@@ -69,6 +72,14 @@ func main() {
 		env = gunfish.Development
 	case "test":
 		env = gunfish.Test
+		apns.ClientTransport = func(cert tls.Certificate) *http.Transport {
+			return &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+					Certificates:       []tls.Certificate{cert},
+				},
+			}
+		}
 	default:
 		logrus.Error("Unknown environment: %s. Please look at help.", environment)
 		os.Exit(1)

@@ -9,17 +9,19 @@ import (
 	"time"
 
 	"github.com/kayac/Gunfish/apns"
+	"github.com/kayac/Gunfish/config"
 	"github.com/sirupsen/logrus"
 )
 
 var (
-	config, _ = LoadConfig("./test/gunfish_test.toml")
+	conf, _ = config.LoadConfig("./test/gunfish_test.toml")
 )
 
 type TestResponseHandler struct {
 	scoreboard map[string]*int
 	wg         *sync.WaitGroup
 	hook       string
+	mu         sync.Mutex
 }
 
 func (tr *TestResponseHandler) Done(token string) {
@@ -27,6 +29,8 @@ func (tr *TestResponseHandler) Done(token string) {
 }
 
 func (tr *TestResponseHandler) Countup(name string) {
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
 	*(tr.scoreboard[name])++
 }
 
@@ -34,15 +38,7 @@ func (tr TestResponseHandler) OnResponse(result Result) {
 	tr.wg.Add(1)
 	if err := result.Err(); err != nil {
 		logrus.Warnf(err.Error())
-		if err.Error() == apns.MissingTopic.String() {
-			tr.Countup(apns.MissingTopic.String())
-		}
-		if err.Error() == apns.BadDeviceToken.String() {
-			tr.Countup(apns.BadDeviceToken.String())
-		}
-		if err.Error() == apns.Unregistered.String() {
-			tr.Countup(apns.Unregistered.String())
-		}
+		tr.Countup(err.Error())
 	} else {
 		tr.Countup("success")
 	}
@@ -55,11 +51,11 @@ func (tr TestResponseHandler) HookCmd() string {
 
 func init() {
 	logrus.SetLevel(logrus.WarnLevel)
-	config.Apns.Host = MockServer
+	conf.Apns.Host = MockServer
 }
 
 func TestStartAndStopSupervisor(t *testing.T) {
-	sup, err := StartSupervisor(&config)
+	sup, err := StartSupervisor(&conf)
 	if err != nil {
 		t.Errorf("cannot start supvisor: %s", err.Error())
 	}
@@ -82,8 +78,15 @@ func TestStartAndStopSupervisor(t *testing.T) {
 func TestEnqueuRequestToSupervisor(t *testing.T) {
 	// Prepare
 	wg := sync.WaitGroup{}
-	score := make(map[string]*int, 4)
-	for _, v := range []string{apns.MissingTopic.String(), apns.BadDeviceToken.String(), apns.Unregistered.String(), "success"} {
+	score := make(map[string]*int, 5)
+	boardList := []string{
+		apns.MissingTopic.String(),
+		apns.BadDeviceToken.String(),
+		apns.Unregistered.String(),
+		apns.ExpiredProviderToken.String(),
+		"success",
+	}
+	for _, v := range boardList {
 		x := 0
 		score[v] = &x
 	}
@@ -91,51 +94,82 @@ func TestEnqueuRequestToSupervisor(t *testing.T) {
 	etr := TestResponseHandler{
 		wg:         &wg,
 		scoreboard: score,
-		hook:       config.Provider.ErrorHook,
+		hook:       conf.Provider.ErrorHook,
+		mu:         sync.Mutex{},
 	}
 	str := TestResponseHandler{
 		wg:         &wg,
 		scoreboard: score,
+		mu:         sync.Mutex{},
 	}
 	InitErrorResponseHandler(etr)
 	InitSuccessResponseHandler(str)
 
-	sup, err := StartSupervisor(&config)
+	sup, err := StartSupervisor(&conf)
 	if err != nil {
 		t.Errorf("cannot start supervisor: %s", err.Error())
 	}
+	defer sup.Shutdown()
 
 	// test success requests
 	reqs := repeatRequestData("1122334455667788112233445566778811223344556677881122334455667788", 10)
 	for range []int{0, 1, 2, 3, 4, 5, 6} {
 		sup.EnqueueClientRequest(&reqs)
 	}
+	time.Sleep(time.Millisecond * 500)
+	wg.Wait()
+	if g, w := *(score["success"]), 70; g != w {
+		t.Errorf("not match success count: got %d want %d", g, w)
+	}
 
 	// test error requests
-	mreqs := repeatRequestData("missingtopic", 1)
-	sup.EnqueueClientRequest(&mreqs)
-
-	ureqs := repeatRequestData("unregistered", 1)
-	sup.EnqueueClientRequest(&ureqs)
-
-	breqs := repeatRequestData("baddevicetoken", 1)
-	sup.EnqueueClientRequest(&breqs)
-
-	time.Sleep(time.Second * 1)
-	wg.Wait()
-	sup.Shutdown()
-
-	if *(score[apns.MissingTopic.String()]) != 1 {
-		t.Errorf("Expected MissingTopic count is 1 but got %d", *(score[apns.MissingTopic.String()]))
+	testTable := []struct {
+		errToken string
+		num      int
+		msleep   time.Duration
+		errCode  apns.ErrorResponseCode
+		expect   int
+	}{
+		{
+			errToken: "missingtopic",
+			num:      1,
+			msleep:   300,
+			errCode:  apns.MissingTopic,
+			expect:   1,
+		},
+		{
+			errToken: "unregistered",
+			num:      1,
+			msleep:   300,
+			errCode:  apns.Unregistered,
+			expect:   1,
+		},
+		{
+			errToken: "baddevicetoken",
+			num:      1,
+			msleep:   300,
+			errCode:  apns.BadDeviceToken,
+			expect:   1,
+		},
+		{
+			errToken: "expiredprovidertoken",
+			num:      1,
+			msleep:   5000,
+			errCode:  apns.ExpiredProviderToken,
+			expect:   1 * SendRetryCount,
+		},
 	}
-	if *(score[apns.Unregistered.String()]) != 1 {
-		t.Errorf("Expected Unregistered count is 1 but got %d", *(score[apns.Unregistered.String()]))
-	}
-	if *(score[apns.BadDeviceToken.String()]) != 1 {
-		t.Errorf("Expected BadDeviceToken count is 1 but got %d", *(score[apns.BadDeviceToken.String()]))
-	}
-	if *(score["success"]) != 70 {
-		t.Errorf("Expected success count is 70 but got %d", *(score["success"]))
+
+	for _, tt := range testTable {
+		reqs := repeatRequestData(tt.errToken, tt.num)
+		sup.EnqueueClientRequest(&reqs)
+		time.Sleep(time.Millisecond * tt.msleep)
+		wg.Wait()
+
+		errReason := tt.errCode.String()
+		if g, w := *(score[errReason]), tt.expect; g != w {
+			t.Errorf("not match %s count: got %d want %d", errReason, g, w)
+		}
 	}
 }
 
