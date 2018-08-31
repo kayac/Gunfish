@@ -173,6 +173,8 @@ error_hook = "echo -e 'Hello Gunfish at error hook!'"
 [apns]
 key_file = "/path/to/server.key"
 cert_file = "/path/to/server.crt"
+kid = "kid"
+team_id = "team_id"
 
 [fcm]
 api_key = "API key for FCM"
@@ -186,8 +188,11 @@ queue_size       |optional| Limit number of posted JSON from the developer appli
 max_request_size |optional| Limit size of Posted JSON array.
 max_connections  |optional| Max connections
 key_file         |required| The key file path.
-cert_file        |required| The cert file path.
+cert_file        |optional| The cert file path.
+kid              |optional| kid for APNs provider authentication token.
+team_id          |optional| team id for APNs provider authentication token.
 error_hook       |optional| Error hook command. This command runs when Gunfish catches an error response.
+api_key          |optional| FCM api key. If you want to delivery notifications to android, it is required.
 
 ## Error Hook
 
