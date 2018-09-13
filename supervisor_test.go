@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"sync"
 	"testing"
 	"time"
@@ -103,17 +104,18 @@ func TestEnqueueRequestToSupervisor(t *testing.T) {
 
 	// test success requests
 	reqs := repeatRequestData("1122334455667788112233445566778811223344556677881122334455667788", 10)
-	for range []int{0, 1, 2, 3, 4, 5, 6} {
+	for range []int{0, 1, 2, 3, 4} {
 		sup.EnqueueClientRequest(&reqs)
 	}
 
 	twg := sync.WaitGroup{}
 	twg.Add(1)
-	expectSuccess := 70
+	expectSuccess := 50
 	go func() {
 		defer twg.Done()
 		endTime := time.Now().Add(time.Second * 10)
 		for time.Now().Before(endTime) {
+			log.Println(*score["success"])
 			if *(score["success"]) == expectSuccess {
 				return
 			}
