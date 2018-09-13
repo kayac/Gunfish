@@ -19,13 +19,8 @@ var (
 
 type TestResponseHandler struct {
 	scoreboard map[string]*int
-	wg         *sync.WaitGroup
 	hook       string
 	mu         sync.Mutex
-}
-
-func (tr *TestResponseHandler) Done(token string) {
-	tr.wg.Done()
 }
 
 func (tr *TestResponseHandler) Countup(name string) {
@@ -35,14 +30,12 @@ func (tr *TestResponseHandler) Countup(name string) {
 }
 
 func (tr TestResponseHandler) OnResponse(result Result) {
-	tr.wg.Add(1)
 	if err := result.Err(); err != nil {
 		logrus.Warnf(err.Error())
 		tr.Countup(err.Error())
 	} else {
 		tr.Countup("success")
 	}
-	tr.Done(result.RecipientIdentifier())
 }
 
 func (tr TestResponseHandler) HookCmd() string {
@@ -75,9 +68,8 @@ func TestStartAndStopSupervisor(t *testing.T) {
 	}
 }
 
-func TestEnqueuRequestToSupervisor(t *testing.T) {
+func TestEnqueueRequestToSupervisor(t *testing.T) {
 	// Prepare
-	wg := sync.WaitGroup{}
 	score := make(map[string]*int, 5)
 	boardList := []string{
 		apns.MissingTopic.String(),
@@ -92,13 +84,11 @@ func TestEnqueuRequestToSupervisor(t *testing.T) {
 	}
 
 	etr := TestResponseHandler{
-		wg:         &wg,
 		scoreboard: score,
 		hook:       conf.Provider.ErrorHook,
 		mu:         sync.Mutex{},
 	}
 	str := TestResponseHandler{
-		wg:         &wg,
 		scoreboard: score,
 		mu:         sync.Mutex{},
 	}
@@ -116,9 +106,22 @@ func TestEnqueuRequestToSupervisor(t *testing.T) {
 	for range []int{0, 1, 2, 3, 4, 5, 6} {
 		sup.EnqueueClientRequest(&reqs)
 	}
-	time.Sleep(time.Millisecond * 500)
-	wg.Wait()
-	if g, w := *(score["success"]), 70; g != w {
+
+	twg := sync.WaitGroup{}
+	twg.Add(1)
+	expectSuccess := 70
+	go func() {
+		defer twg.Done()
+		endTime := time.Now().Add(time.Second * 10)
+		for time.Now().Before(endTime) {
+			if *(score["success"]) == expectSuccess {
+				return
+			}
+			time.Sleep(time.Second * 1)
+		}
+	}()
+	twg.Wait()
+	if g, w := *(score["success"]), expectSuccess; g != w {
 		t.Errorf("not match success count: got %d want %d", g, w)
 	}
 
@@ -126,35 +129,30 @@ func TestEnqueuRequestToSupervisor(t *testing.T) {
 	testTable := []struct {
 		errToken string
 		num      int
-		msleep   time.Duration
 		errCode  apns.ErrorResponseCode
 		expect   int
 	}{
 		{
 			errToken: "missingtopic",
 			num:      1,
-			msleep:   300,
 			errCode:  apns.MissingTopic,
 			expect:   1,
 		},
 		{
 			errToken: "unregistered",
 			num:      1,
-			msleep:   300,
 			errCode:  apns.Unregistered,
 			expect:   1,
 		},
 		{
 			errToken: "baddevicetoken",
 			num:      1,
-			msleep:   300,
 			errCode:  apns.BadDeviceToken,
 			expect:   1,
 		},
 		{
 			errToken: "expiredprovidertoken",
 			num:      1,
-			msleep:   5000,
 			errCode:  apns.ExpiredProviderToken,
 			expect:   1 * SendRetryCount,
 		},
@@ -163,10 +161,21 @@ func TestEnqueuRequestToSupervisor(t *testing.T) {
 	for _, tt := range testTable {
 		reqs := repeatRequestData(tt.errToken, tt.num)
 		sup.EnqueueClientRequest(&reqs)
-		time.Sleep(time.Millisecond * tt.msleep)
-		wg.Wait()
-
 		errReason := tt.errCode.String()
+
+		twg.Add(1)
+		go func() {
+			defer twg.Done()
+			endTime := time.Now().Add(time.Second * 10)
+			for time.Now().Before(endTime) {
+				if *(score[errReason]) == tt.expect {
+					return
+				}
+				time.Sleep(time.Second * 1)
+			}
+		}()
+		twg.Wait()
+
 		if g, w := *(score[errReason]), tt.expect; g != w {
 			t.Errorf("not match %s count: got %d want %d", errReason, g, w)
 		}
