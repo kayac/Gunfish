@@ -194,6 +194,27 @@ team_id          |optional| team id for APNs provider authentication token.
 error_hook       |optional| Error hook command. This command runs when Gunfish catches an error response.
 api_key          |optional| FCM api key. If you want to delivery notifications to android, it is required.
 
+Moreover, it is enabled to be embeded environment variables [(for more information)](https://github.com/kayac/go-config).
+
+```toml
+[provider]
+port = "{{ env 'GUNFISH_PORT' '8203' }}"
+worker_num = "{{ env 'GUNFISH_WORKER_NUM' '8'}}"
+queue_size = "{{ env 'GUNFISH_QUEUE_SIZE' '2000' }}"
+max_request_size =  "{{ env 'GUNFISH_MAX_REQUEST_SIZE' '1000'}}"
+max_connections = "{{ env 'GUNFISH_MAX_CONNECTIONS' '2000'}}"
+error_hook = "echo -e 'Hello Gunfish at error hook!'"
+
+[apns]
+key_file = "/path/to/server.key"
+cert_file = "/path/to/server.crt"
+kid = "{{ must_env 'APNS_KID' }}"
+team_id = "{{ must_env 'APNS_TEAM_ID' }}"
+
+[fcm]
+api_key = "{{ must_env 'FCM_API_KEY' }}"
+```
+
 ## Error Hook
 
 Error hook command can get an each error response with JSON format by STDIN.
