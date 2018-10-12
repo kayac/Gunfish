@@ -35,10 +35,15 @@ func (tr *TestResponseHandler) Countup(name string) {
 	*(tr.scoreboard[name])++
 }
 
+func (tr *TestResponseHandler) Get(name string) int {
+	mu.Lock()
+	defer mu.Unlock()
+	return *(tr.scoreboard[name])
+}
+
 func (tr TestResponseHandler) OnResponse(result gunfish.Result) {
 	tr.wg.Add(1)
 	if err := result.Err(); err != nil {
-		logrus.Warnf(err.Error())
 		tr.Countup(err.Error())
 	} else {
 		tr.Countup("success")
@@ -96,7 +101,7 @@ func TestEnqueuRequestToSupervisor(t *testing.T) {
 	}
 	time.Sleep(time.Millisecond * 500)
 	wg.Wait()
-	if g, w := *(score["success"]), 70; g != w {
+	if g, w := str.Get("success"), 70; g != w {
 		t.Errorf("not match success count: got %d want %d", g, w)
 	}
 
@@ -145,7 +150,7 @@ func TestEnqueuRequestToSupervisor(t *testing.T) {
 		wg.Wait()
 
 		errReason := tt.errCode.String()
-		if g, w := *(score[errReason]), tt.expect; g != w {
+		if g, w := str.Get(errReason), tt.expect; g != w {
 			t.Errorf("not match %s count: got %d want %d", errReason, g, w)
 		}
 	}
