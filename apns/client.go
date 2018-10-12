@@ -125,14 +125,22 @@ func (ac *Client) NewRequest(token string, h *Header, payload Payload) (*http.Re
 }
 
 func (ac *Client) issueToken() error {
-	var err error
-	now := time.Now()
+	/*
+		tokenTime is a unixtime of nearest HH:00:00 or HH:30:00 from now-10 min.
+		When many Gunfish processes are running in one service, these JWT tokens must be a same value at the same time.
 
-	ac.authToken.jwt, err = CreateJWT(ac.key, ac.kid, ac.teamID, now)
+		https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/sending_notification_requests_to_apns
+		> Update the authentication token no more than once every 20 minutes.
+
+	*/
+	tokenTime := ((time.Now().Unix() - 600) / 1800) * 1800
+
+	var err error
+	ac.authToken.jwt, err = CreateJWT(ac.key, ac.kid, ac.teamID, tokenTime)
 	if err != nil {
 		return err
 	}
-	ac.authToken.issuedAt = now
+	ac.authToken.issuedAt = time.Unix(tokenTime, 0)
 	return nil
 }
 
