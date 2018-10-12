@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"testing"
-	"time"
 
 	gunfish "github.com/kayac/Gunfish"
 	"github.com/kayac/Gunfish/apns"
@@ -165,18 +164,8 @@ func TestEnqueueTooManyRequest(t *testing.T) {
 	prov := &gunfish.Provider{Sup: sup}
 	handler := prov.PushAPNsHandler()
 
-	// When queue stack is full, return 503
-	var manyNum int
-	tp := ((conf.Provider.RequestQueueSize * int(gunfish.AverageResponseTime/time.Millisecond)) / 1000) / gunfish.SenderNum
-	dif := (gunfish.RequestPerSec - conf.Provider.RequestQueueSize/tp)
-	if dif > 0 {
-		manyNum = dif * int(gunfish.FlowRateInterval/time.Second) * 2
-	} else {
-		manyNum = -1 * dif * int(gunfish.FlowRateInterval/time.Second) * 2
-	}
-
 	var jsons [][]byte
-	for i := 0; i < manyNum; i++ {
+	for i := 0; i < 1000; i++ {
 		jsons = append(jsons, createJSONPostedData(1)) // Too many requests
 	}
 
