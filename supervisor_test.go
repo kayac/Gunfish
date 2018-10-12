@@ -16,13 +16,13 @@ import (
 
 var (
 	conf, _ = config.LoadConfig("./test/gunfish_test.toml")
+	mu      sync.Mutex
 )
 
 type TestResponseHandler struct {
 	scoreboard map[string]*int
 	wg         *sync.WaitGroup
 	hook       string
-	mu         sync.Mutex
 }
 
 func (tr *TestResponseHandler) Done(token string) {
@@ -30,8 +30,8 @@ func (tr *TestResponseHandler) Done(token string) {
 }
 
 func (tr *TestResponseHandler) Countup(name string) {
-	tr.mu.Lock()
-	defer tr.mu.Unlock()
+	mu.Lock()
+	defer mu.Unlock()
 	*(tr.scoreboard[name])++
 }
 
@@ -75,12 +75,10 @@ func TestEnqueuRequestToSupervisor(t *testing.T) {
 		wg:         &wg,
 		scoreboard: score,
 		hook:       conf.Provider.ErrorHook,
-		mu:         sync.Mutex{},
 	}
 	str := TestResponseHandler{
 		wg:         &wg,
 		scoreboard: score,
-		mu:         sync.Mutex{},
 	}
 	gunfish.InitErrorResponseHandler(etr)
 	gunfish.InitSuccessResponseHandler(str)
