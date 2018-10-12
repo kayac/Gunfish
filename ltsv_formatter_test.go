@@ -1,15 +1,16 @@
-package gunfish
+package gunfish_test
 
 import (
 	"bytes"
 	"errors"
 	"testing"
 
+	gunfish "github.com/kayac/Gunfish"
 	"github.com/sirupsen/logrus"
 )
 
 func TestQuoting(t *testing.T) {
-	tf := &LtsvFormatter{}
+	tf := &gunfish.LtsvFormatter{}
 
 	checkQuoting := func(q bool, value interface{}) {
 		b, _ := tf.Format(logrus.WithField("test", value))

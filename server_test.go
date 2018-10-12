@@ -1,4 +1,4 @@
-package gunfish
+package gunfish_test
 
 import (
 	"bytes"
@@ -13,12 +13,15 @@ import (
 	"testing"
 	"time"
 
+	gunfish "github.com/kayac/Gunfish"
 	"github.com/kayac/Gunfish/apns"
 	"github.com/kayac/Gunfish/config"
 	"github.com/kayac/Gunfish/mock"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/http2"
 )
+
+var srvStats gunfish.Stats
 
 func TestMain(m *testing.M) {
 	runner := func() int {
@@ -30,8 +33,8 @@ func TestMain(m *testing.M) {
 				},
 			}
 		}
-		InitErrorResponseHandler(DefaultResponseHandler{hook: `cat `})
-		InitSuccessResponseHandler(DefaultResponseHandler{})
+		gunfish.InitErrorResponseHandler(gunfish.DefaultResponseHandler{Hook: `cat `})
+		gunfish.InitSuccessResponseHandler(gunfish.DefaultResponseHandler{})
 		logrus.SetLevel(logrus.WarnLevel)
 
 		ts := httptest.NewUnstartedServer(mock.APNsMockServer(false))
@@ -54,21 +57,21 @@ func TestInvalidCertification(t *testing.T) {
 	c, _ := config.LoadConfig("./test/gunfish_test.toml")
 	c.Apns.CertFile = "./test/invalid.crt"
 	c.Apns.KeyFile = "./test/invalid.key"
-	ss, err := StartSupervisor(&c)
+	ss, err := gunfish.StartSupervisor(&c)
 	if err != nil {
 		t.Errorf("Expected supervisor cannot start because of using invalid certification files.: %v", ss)
 	}
 }
 
 func TestSuccessToPostJson(t *testing.T) {
-	sup, _ := StartSupervisor(&conf)
-	prov := &Provider{sup: sup}
-	handler := prov.pushAPNsHandler()
+	sup, _ := gunfish.StartSupervisor(&conf)
+	prov := &gunfish.Provider{Sup: sup}
+	handler := prov.PushAPNsHandler()
 
 	// application/json
 	jsons := createJSONPostedData(3)
 	w := httptest.NewRecorder()
-	r, err := newRequest(jsons, "POST", ApplicationJSON)
+	r, err := newRequest(jsons, "POST", gunfish.ApplicationJSON)
 	if err != nil {
 		t.Errorf("%s", err)
 	}
@@ -81,7 +84,7 @@ func TestSuccessToPostJson(t *testing.T) {
 	// application/x-www-form-urlencoded
 	data := createFormPostedData(3)
 	w = httptest.NewRecorder() // re-creates Recoder because cannot overwrite header after to write body.
-	r, err = newRequest(data, "POST", ApplicationXW3FormURLEncoded)
+	r, err = newRequest(data, "POST", gunfish.ApplicationXW3FormURLEncoded)
 	if err != nil {
 		t.Errorf("%s", err)
 	}
@@ -95,15 +98,15 @@ func TestSuccessToPostJson(t *testing.T) {
 }
 
 func TestFailedToPostInvalidJson(t *testing.T) {
-	sup, _ := StartSupervisor(&conf)
-	prov := &Provider{sup: sup}
-	handler := prov.pushFCMHandler()
+	sup, _ := gunfish.StartSupervisor(&conf)
+	prov := &gunfish.Provider{Sup: sup}
+	handler := prov.PushFCMHandler()
 
 	// missing `}`
 	invalidJson := []byte(`{"registration_ids": ["xxxxxxxxx"], "data": {"message":"test"`)
 
 	w := httptest.NewRecorder()
-	r, err := newRequest(invalidJson, "POST", ApplicationJSON)
+	r, err := newRequest(invalidJson, "POST", gunfish.ApplicationJSON)
 	if err != nil {
 		t.Errorf("%s", err)
 	}
@@ -119,9 +122,9 @@ func TestFailedToPostInvalidJson(t *testing.T) {
 }
 
 func TestFailedToPostMalformedJson(t *testing.T) {
-	sup, _ := StartSupervisor(&conf)
-	prov := &Provider{sup: sup}
-	handler := prov.pushAPNsHandler()
+	sup, _ := gunfish.StartSupervisor(&conf)
+	prov := &gunfish.Provider{Sup: sup}
+	handler := prov.PushAPNsHandler()
 
 	jsons := []string{
 		`{"test":"test"}`,
@@ -133,7 +136,7 @@ func TestFailedToPostMalformedJson(t *testing.T) {
 		v.Add("json", s)
 
 		// application/x-www-form-urlencoded
-		r, err := newRequest([]byte(v.Encode()), "POST", ApplicationXW3FormURLEncoded)
+		r, err := newRequest([]byte(v.Encode()), "POST", gunfish.ApplicationXW3FormURLEncoded)
 		if err != nil {
 			t.Errorf("%s", err)
 		}
@@ -145,7 +148,7 @@ func TestFailedToPostMalformedJson(t *testing.T) {
 		}
 
 		// application/json
-		r, err = newRequest([]byte(s), "POST", ApplicationJSON)
+		r, err = newRequest([]byte(s), "POST", gunfish.ApplicationJSON)
 		if err != nil {
 			t.Errorf("%s", err)
 		}
@@ -161,19 +164,19 @@ func TestFailedToPostMalformedJson(t *testing.T) {
 }
 
 func TestEnqueueTooManyRequest(t *testing.T) {
-	sup, _ := StartSupervisor(&conf)
-	prov := &Provider{sup: sup}
-	srvStats = NewStats(conf)
-	handler := prov.pushAPNsHandler()
+	sup, _ := gunfish.StartSupervisor(&conf)
+	prov := &gunfish.Provider{Sup: sup}
+	srvStats = gunfish.NewStats(conf)
+	handler := prov.PushAPNsHandler()
 
 	// When queue stack is full, return 503
 	var manyNum int
-	tp := ((conf.Provider.RequestQueueSize * int(AverageResponseTime/time.Millisecond)) / 1000) / SenderNum
-	dif := (RequestPerSec - conf.Provider.RequestQueueSize/tp)
+	tp := ((conf.Provider.RequestQueueSize * int(gunfish.AverageResponseTime/time.Millisecond)) / 1000) / gunfish.SenderNum
+	dif := (gunfish.RequestPerSec - conf.Provider.RequestQueueSize/tp)
 	if dif > 0 {
-		manyNum = dif * int(FlowRateInterval/time.Second) * 2
+		manyNum = dif * int(gunfish.FlowRateInterval/time.Second) * 2
 	} else {
-		manyNum = -1 * dif * int(FlowRateInterval/time.Second) * 2
+		manyNum = -1 * dif * int(gunfish.FlowRateInterval/time.Second) * 2
 	}
 
 	var jsons [][]byte
@@ -186,7 +189,7 @@ func TestEnqueueTooManyRequest(t *testing.T) {
 	w := httptest.NewRecorder() // creates new Recoder because cannot overwrite header.
 	var ra string
 	for _, json := range jsons {
-		r, err := newRequest(json, "POST", ApplicationJSON)
+		r, err := newRequest(json, "POST", gunfish.ApplicationJSON)
 		if err != nil {
 			t.Errorf("%s", err)
 		}
@@ -209,7 +212,7 @@ func TestEnqueueTooManyRequest(t *testing.T) {
 
 	// Test Retry-After value increases
 	w = httptest.NewRecorder() // re-creates Recoder because cannot overwrite header after to write body.
-	r, err := newRequest(jsons[0], "POST", ApplicationJSON)
+	r, err := newRequest(jsons[0], "POST", gunfish.ApplicationJSON)
 	if err != nil {
 		t.Errorf("%s", err)
 	}
@@ -226,13 +229,13 @@ func TestEnqueueTooManyRequest(t *testing.T) {
 }
 
 func TestTooLargeRequest(t *testing.T) {
-	sup, _ := StartSupervisor(&conf)
-	prov := &Provider{sup: sup}
-	srvStats = NewStats(conf)
-	handler := prov.pushAPNsHandler()
+	sup, _ := gunfish.StartSupervisor(&conf)
+	prov := &gunfish.Provider{Sup: sup}
+	srvStats = gunfish.NewStats(conf)
+	handler := prov.PushAPNsHandler()
 
 	jsons := createJSONPostedData(config.MaxRequestSize + 1) // Too many requests
-	r, err := newRequest(jsons, "POST", ApplicationJSON)
+	r, err := newRequest(jsons, "POST", gunfish.ApplicationJSON)
 	if err != nil {
 		t.Errorf("%s", err)
 	}
@@ -247,13 +250,13 @@ func TestTooLargeRequest(t *testing.T) {
 }
 
 func TestMethodNotAllowed(t *testing.T) {
-	sup, _ := StartSupervisor(&conf)
-	prov := &Provider{sup: sup}
-	handler := prov.pushAPNsHandler()
+	sup, _ := gunfish.StartSupervisor(&conf)
+	prov := &gunfish.Provider{Sup: sup}
+	handler := prov.PushAPNsHandler()
 
 	jsons := createJSONPostedData(1)
 	w := httptest.NewRecorder()
-	r, err := newRequest(jsons, "GET", ApplicationJSON)
+	r, err := newRequest(jsons, "GET", gunfish.ApplicationJSON)
 	if err != nil {
 		t.Errorf("%s", err)
 	}
@@ -267,9 +270,9 @@ func TestMethodNotAllowed(t *testing.T) {
 }
 
 func TestUnsupportedMediaType(t *testing.T) {
-	sup, _ := StartSupervisor(&conf)
-	prov := &Provider{sup: sup}
-	handler := prov.pushAPNsHandler()
+	sup, _ := gunfish.StartSupervisor(&conf)
+	prov := &gunfish.Provider{Sup: sup}
+	handler := prov.PushAPNsHandler()
 
 	jsons := createPostedData(1)
 	r, err := http.NewRequest(
@@ -292,16 +295,16 @@ func TestUnsupportedMediaType(t *testing.T) {
 }
 
 func TestStats(t *testing.T) {
-	sup, _ := StartSupervisor(&conf)
-	prov := &Provider{sup: sup}
-	srvStats = NewStats(conf)
-	pushh := prov.pushAPNsHandler()
-	statsh := prov.statsHandler()
+	sup, _ := gunfish.StartSupervisor(&conf)
+	prov := &gunfish.Provider{Sup: sup}
+	srvStats = gunfish.NewStats(conf)
+	pushh := prov.PushAPNsHandler()
+	statsh := prov.StatsHandler()
 
 	// Updates stat
 	jsons := createJSONPostedData(1)
 	w := httptest.NewRecorder()
-	r, err := newRequest(jsons, "POST", ApplicationJSON)
+	r, err := newRequest(jsons, "POST", gunfish.ApplicationJSON)
 	if err != nil {
 		t.Errorf("%s", err)
 	}
@@ -309,7 +312,7 @@ func TestStats(t *testing.T) {
 	w = httptest.NewRecorder() // re-creates Recoder because cannot overwrite header after to write body.
 
 	// GET status
-	r, err = newRequest([]byte(""), "GET", ApplicationJSON)
+	r, err = newRequest([]byte(""), "GET", gunfish.ApplicationJSON)
 	if err != nil {
 		t.Errorf("%s", err)
 	}
@@ -317,7 +320,7 @@ func TestStats(t *testing.T) {
 	statsh.ServeHTTP(w, r)
 
 	// check stat
-	var resStat Stats
+	var resStat gunfish.Stats
 	de := json.NewDecoder(w.Body)
 	de.Decode(&resStat)
 
@@ -354,7 +357,7 @@ func createFormPostedData(num int) []byte {
 }
 
 func createPostedData(num int) []byte {
-	pds := make([]PostedData, num)
+	pds := make([]gunfish.PostedData, num)
 	tokens := make([]string, num)
 	for i := 0; i < num; i++ {
 		tokens[i] = fmt.Sprintf("%032d", i)
@@ -370,7 +373,7 @@ func createPostedData(num int) []byte {
 			Sound: "default",
 		}
 
-		pds[i] = PostedData{
+		pds[i] = gunfish.PostedData{
 			Payload: payload,
 			Token:   v,
 		}

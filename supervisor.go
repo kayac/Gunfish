@@ -141,7 +141,7 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 			for c := range s.cmdq {
 				LogWithFields(logf).Debugf("invoking command: %s %s", c.command, string(c.input))
 				src := bytes.NewBuffer(c.input)
-				out, err := invokePipe(c.command, src)
+				out, err := InvokePipe(c.command, src)
 				if err != nil {
 					LogWithFields(logf).Errorf("(%s) %s", err.Error(), string(out))
 				} else {
@@ -528,7 +528,7 @@ func onResponse(result Result, cmd string, cmdq chan<- Command) {
 	}
 }
 
-func invokePipe(hook string, src io.Reader) ([]byte, error) {
+func InvokePipe(hook string, src io.Reader) ([]byte, error) {
 	logf := logrus.Fields{"type": "invoke_pipe"}
 	cmd := exec.Command("sh", "-c", hook)
 

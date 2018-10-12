@@ -1,4 +1,4 @@
-package gunfish
+package gunfish_test
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	gunfish "github.com/kayac/Gunfish"
 	"github.com/kayac/Gunfish/apns"
 	"github.com/kayac/Gunfish/config"
 	"github.com/sirupsen/logrus"
@@ -34,7 +35,7 @@ func (tr *TestResponseHandler) Countup(name string) {
 	*(tr.scoreboard[name])++
 }
 
-func (tr TestResponseHandler) OnResponse(result Result) {
+func (tr TestResponseHandler) OnResponse(result gunfish.Result) {
 	tr.wg.Add(1)
 	if err := result.Err(); err != nil {
 		logrus.Warnf(err.Error())
@@ -51,28 +52,7 @@ func (tr TestResponseHandler) HookCmd() string {
 
 func init() {
 	logrus.SetLevel(logrus.WarnLevel)
-	conf.Apns.Host = MockServer
-}
-
-func TestStartAndStopSupervisor(t *testing.T) {
-	sup, err := StartSupervisor(&conf)
-	if err != nil {
-		t.Errorf("cannot start supvisor: %s", err.Error())
-	}
-
-	sup.Shutdown()
-
-	if _, ok := <-sup.queue; ok == true {
-		t.Errorf("not closed channel: %v", sup.queue)
-	}
-
-	if _, ok := <-sup.retryq; ok == true {
-		t.Errorf("not closed channel: %v", sup.queue)
-	}
-
-	if _, ok := <-sup.cmdq; ok == true {
-		t.Errorf("not closed channel: %v", sup.queue)
-	}
+	conf.Apns.Host = gunfish.MockServer
 }
 
 func TestEnqueuRequestToSupervisor(t *testing.T) {
@@ -102,10 +82,10 @@ func TestEnqueuRequestToSupervisor(t *testing.T) {
 		scoreboard: score,
 		mu:         sync.Mutex{},
 	}
-	InitErrorResponseHandler(etr)
-	InitSuccessResponseHandler(str)
+	gunfish.InitErrorResponseHandler(etr)
+	gunfish.InitSuccessResponseHandler(str)
 
-	sup, err := StartSupervisor(&conf)
+	sup, err := gunfish.StartSupervisor(&conf)
 	if err != nil {
 		t.Errorf("cannot start supervisor: %s", err.Error())
 	}
@@ -156,7 +136,7 @@ func TestEnqueuRequestToSupervisor(t *testing.T) {
 			num:      1,
 			msleep:   5000,
 			errCode:  apns.ExpiredProviderToken,
-			expect:   1 * SendRetryCount,
+			expect:   1 * gunfish.SendRetryCount,
 		},
 	}
 
@@ -173,8 +153,8 @@ func TestEnqueuRequestToSupervisor(t *testing.T) {
 	}
 }
 
-func repeatRequestData(token string, num int) []Request {
-	var reqs []Request
+func repeatRequestData(token string, num int) []gunfish.Request {
+	var reqs []gunfish.Request
 	for i := 0; i < num; i++ {
 		// Create request
 		aps := &apns.APS{
@@ -187,7 +167,7 @@ func repeatRequestData(token string, num int) []Request {
 		payload := apns.Payload{}
 		payload.APS = aps
 
-		req := Request{
+		req := gunfish.Request{
 			Notification: apns.Notification{
 				Token:   token,
 				Payload: payload,
@@ -214,8 +194,8 @@ func TestSuccessOrFailureInvoke(t *testing.T) {
 	}
 	payload := apns.Payload{}
 	payload.APS = aps
-	sr := SenderResponse{
-		Req: Request{
+	sr := gunfish.SenderResponse{
+		Req: gunfish.Request{
 			Notification: apns.Notification{
 				Token:   token,
 				Payload: payload,
@@ -232,7 +212,7 @@ func TestSuccessOrFailureInvoke(t *testing.T) {
 
 	// Succeed to invoke
 	src := bytes.NewBuffer(j)
-	out, err := invokePipe(`cat`, src)
+	out, err := gunfish.InvokePipe(`cat`, src)
 	if err != nil {
 		t.Errorf("result: %s, err: %s", string(out), err.Error())
 	}
@@ -247,14 +227,14 @@ func TestSuccessOrFailureInvoke(t *testing.T) {
 
 	// Failure to invoke
 	src = bytes.NewBuffer(j)
-	out, err = invokePipe(`expr 1 1`, src)
+	out, err = gunfish.InvokePipe(`expr 1 1`, src)
 	if err == nil {
 		t.Errorf("Expected failure to invoke command: %s", string(out))
 	}
 
 	// tests command including Pipe '|'
 	src = bytes.NewBuffer(j)
-	out, err = invokePipe(`cat | head -n 10 | tail -n 10`, src)
+	out, err = gunfish.InvokePipe(`cat | head -n 10 | tail -n 10`, src)
 	if err != nil {
 		t.Errorf("result: %s, err: %s", string(out), err.Error())
 	}
@@ -264,7 +244,7 @@ func TestSuccessOrFailureInvoke(t *testing.T) {
 
 	// Must fail
 	src = bytes.NewBuffer(j)
-	out, err = invokePipe(`echo 'Failure test'; false`, src)
+	out, err = gunfish.InvokePipe(`echo 'Failure test'; false`, src)
 	if err == nil {
 		t.Errorf("result: %s, err: %s", string(out), err.Error())
 	}
@@ -273,17 +253,17 @@ func TestSuccessOrFailureInvoke(t *testing.T) {
 	}
 
 	// stdout be not captured
-	OutputHookStdout = true
+	gunfish.OutputHookStdout = true
 	src = bytes.NewBuffer(j)
-	out, err = invokePipe(`cat; echo 'this is error.' 1>&2`, src)
+	out, err = gunfish.InvokePipe(`cat; echo 'this is error.' 1>&2`, src)
 	if len(out) != 15 {
 		t.Errorf("hooks stdout must not be captured: %s", out)
 	}
 
 	// stderr
-	OutputHookStderr = true
+	gunfish.OutputHookStderr = true
 	src = bytes.NewBuffer(j)
-	out, err = invokePipe(`cat; echo 'this is error.' 1>&2`, src)
+	out, err = gunfish.InvokePipe(`cat; echo 'this is error.' 1>&2`, src)
 	if len(out) != 0 {
 		t.Errorf("hooks stderr must not be captured: %s", out)
 	}

@@ -26,7 +26,7 @@ import (
 // Provider defines Gunfish httpHandler and has a state
 // of queue which is shared by the supervisor.
 type Provider struct {
-	sup Supervisor
+	Sup Supervisor
 }
 
 // ResponseHandler provides you to implement handling on success or on error response from apns.
@@ -38,7 +38,7 @@ type ResponseHandler interface {
 
 // DefaultResponseHandler is the default ResponseHandler if not specified.
 type DefaultResponseHandler struct {
-	hook string
+	Hook string
 }
 
 // OnResponse is performed when to receive result from APNs or FCM.
@@ -48,7 +48,7 @@ func (rh DefaultResponseHandler) OnResponse(result Result) {
 // HookCmd returns hook command to execute after getting response from APNS
 // only when to get error response.
 func (rh DefaultResponseHandler) HookCmd() string {
-	return rh.hook
+	return rh.Hook
 }
 
 // StartServer starts an apns provider server on http.
@@ -59,7 +59,7 @@ func StartServer(conf config.Config, env Environment) {
 	}
 
 	if errorResponseHandler == nil {
-		InitErrorResponseHandler(DefaultResponseHandler{hook: conf.Provider.ErrorHook})
+		InitErrorResponseHandler(DefaultResponseHandler{Hook: conf.Provider.ErrorHook})
 	}
 
 	// Init Provider
@@ -87,7 +87,7 @@ func StartServer(conf config.Config, env Environment) {
 			"type": "provider",
 		}).Fatalf("Failed to start Gunfish: %s", err.Error())
 	}
-	prov.sup = sup
+	prov.Sup = sup
 
 	LogWithFields(logrus.Fields{
 		"type": "supervisor",
@@ -142,15 +142,15 @@ func StartServer(conf config.Config, env Environment) {
 		LogWithFields(logrus.Fields{
 			"type": "provider",
 		}).Infof("Enable endpoint /push/apns")
-		mux.HandleFunc("/push/apns", prov.pushAPNsHandler())
+		mux.HandleFunc("/push/apns", prov.PushAPNsHandler())
 	}
 	if conf.FCM.Enabled {
 		LogWithFields(logrus.Fields{
 			"type": "provider",
 		}).Infof("Enable endpoint /push/fcm")
-		mux.HandleFunc("/push/fcm", prov.pushFCMHandler())
+		mux.HandleFunc("/push/fcm", prov.PushFCMHandler())
 	}
-	mux.HandleFunc("/stats/app", prov.statsHandler())
+	mux.HandleFunc("/stats/app", prov.StatsHandler())
 	mux.HandleFunc("/stats/profile", stats_api.Handler)
 
 	if err := gracedown.Serve(llis, mux); err != nil {
@@ -166,7 +166,7 @@ func StartServer(conf config.Config, env Environment) {
 	sup.Shutdown()
 }
 
-func (prov *Provider) pushAPNsHandler() http.HandlerFunc {
+func (prov *Provider) PushAPNsHandler() http.HandlerFunc {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		atomic.AddInt64(&(srvStats.RequestCount), 1)
 
@@ -234,7 +234,7 @@ func (prov *Provider) pushAPNsHandler() http.HandlerFunc {
 		}
 
 		// enqueues one request into supervisor's queue.
-		if err := prov.sup.EnqueueClientRequest(&reqs); err != nil {
+		if err := prov.Sup.EnqueueClientRequest(&reqs); err != nil {
 			setRetryAfter(res, req, err.Error())
 			return
 		}
@@ -245,7 +245,7 @@ func (prov *Provider) pushAPNsHandler() http.HandlerFunc {
 	})
 }
 
-func (prov *Provider) pushFCMHandler() http.HandlerFunc {
+func (prov *Provider) PushFCMHandler() http.HandlerFunc {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		atomic.AddInt64(&(srvStats.RequestCount), 1)
 
@@ -282,7 +282,7 @@ func (prov *Provider) pushFCMHandler() http.HandlerFunc {
 		}
 
 		// enqueues one request into supervisor's queue.
-		if err := prov.sup.EnqueueClientRequest(&grs); err != nil {
+		if err := prov.Sup.EnqueueClientRequest(&grs); err != nil {
 			setRetryAfter(res, req, err.Error())
 			return
 		}
@@ -312,21 +312,21 @@ func setRetryAfter(res http.ResponseWriter, req *http.Request, reason string) {
 	fmt.Fprintf(res, fmt.Sprintf(`{"reason":"%s"}`, reason))
 }
 
-func (prov *Provider) statsHandler() http.HandlerFunc {
+func (prov *Provider) StatsHandler() http.HandlerFunc {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		if ok := validateStatsHandler(res, req); ok != true {
 			return
 		}
 
 		wqs := 0
-		for _, w := range prov.sup.workers {
+		for _, w := range prov.Sup.workers {
 			wqs += len(w.queue)
 		}
 
-		atomic.StoreInt64(&(srvStats.QueueSize), int64(len(prov.sup.queue)))
-		atomic.StoreInt64(&(srvStats.RetryQueueSize), int64(len(prov.sup.retryq)))
+		atomic.StoreInt64(&(srvStats.QueueSize), int64(len(prov.Sup.queue)))
+		atomic.StoreInt64(&(srvStats.RetryQueueSize), int64(len(prov.Sup.retryq)))
 		atomic.StoreInt64(&(srvStats.WorkersQueueSize), int64(wqs))
-		atomic.StoreInt64(&(srvStats.CommandQueueSize), int64(len(prov.sup.cmdq)))
+		atomic.StoreInt64(&(srvStats.CommandQueueSize), int64(len(prov.Sup.cmdq)))
 		res.WriteHeader(http.StatusOK)
 		encoder := json.NewEncoder(res)
 		err := encoder.Encode(srvStats.GetStats())
