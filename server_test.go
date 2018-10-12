@@ -9,7 +9,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"reflect"
 	"testing"
 	"time"
 
@@ -20,8 +19,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/http2"
 )
-
-var srvStats gunfish.Stats
 
 func TestMain(m *testing.M) {
 	runner := func() int {
@@ -166,7 +163,6 @@ func TestFailedToPostMalformedJson(t *testing.T) {
 func TestEnqueueTooManyRequest(t *testing.T) {
 	sup, _ := gunfish.StartSupervisor(&conf)
 	prov := &gunfish.Provider{Sup: sup}
-	srvStats = gunfish.NewStats(conf)
 	handler := prov.PushAPNsHandler()
 
 	// When queue stack is full, return 503
@@ -231,7 +227,6 @@ func TestEnqueueTooManyRequest(t *testing.T) {
 func TestTooLargeRequest(t *testing.T) {
 	sup, _ := gunfish.StartSupervisor(&conf)
 	prov := &gunfish.Provider{Sup: sup}
-	srvStats = gunfish.NewStats(conf)
 	handler := prov.PushAPNsHandler()
 
 	jsons := createJSONPostedData(config.MaxRequestSize + 1) // Too many requests
@@ -297,39 +292,51 @@ func TestUnsupportedMediaType(t *testing.T) {
 func TestStats(t *testing.T) {
 	sup, _ := gunfish.StartSupervisor(&conf)
 	prov := &gunfish.Provider{Sup: sup}
-	srvStats = gunfish.NewStats(conf)
 	pushh := prov.PushAPNsHandler()
 	statsh := prov.StatsHandler()
 
+	var statsBefore, statsAfter gunfish.Stats
+	// GET stats
+	{
+		r, err := newRequest([]byte(""), "GET", gunfish.ApplicationJSON)
+		if err != nil {
+			t.Errorf("%s", err)
+		}
+		w := httptest.NewRecorder()
+		statsh.ServeHTTP(w, r)
+		de := json.NewDecoder(w.Body)
+		de.Decode(&statsBefore)
+	}
+
 	// Updates stat
-	jsons := createJSONPostedData(1)
-	w := httptest.NewRecorder()
-	r, err := newRequest(jsons, "POST", gunfish.ApplicationJSON)
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-	pushh.ServeHTTP(w, r)
-	w = httptest.NewRecorder() // re-creates Recoder because cannot overwrite header after to write body.
-
-	// GET status
-	r, err = newRequest([]byte(""), "GET", gunfish.ApplicationJSON)
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-	time.Sleep(time.Second * 1) // for update uptime of stats
-	statsh.ServeHTTP(w, r)
-
-	// check stat
-	var resStat gunfish.Stats
-	de := json.NewDecoder(w.Body)
-	de.Decode(&resStat)
-
-	if !reflect.DeepEqual(srvStats, resStat) {
-		t.Errorf("Expected total conenctions \"%v\" but got \"%v\"", srvStats, resStat)
+	{
+		jsons := createJSONPostedData(1)
+		r, err := newRequest(jsons, "POST", gunfish.ApplicationJSON)
+		if err != nil {
+			t.Errorf("%s", err)
+		}
+		w := httptest.NewRecorder()
+		pushh.ServeHTTP(w, r)
 	}
 
-	if resStat.CertificateExpireUntil < 0 {
-		t.Errorf("Certificate expired %s %d", resStat.CertificateNotAfter, resStat.CertificateExpireUntil)
+	// GET stats
+	{
+		r, err := newRequest([]byte(""), "GET", gunfish.ApplicationJSON)
+		if err != nil {
+			t.Errorf("%s", err)
+		}
+		w := httptest.NewRecorder()
+		statsh.ServeHTTP(w, r)
+		de := json.NewDecoder(w.Body)
+		de.Decode(&statsAfter)
+	}
+
+	if statsAfter.RequestCount != statsBefore.RequestCount+1 {
+		t.Errorf("Unexpected stats request count: %#v %#v", statsBefore, statsAfter)
+	}
+
+	if statsAfter.CertificateExpireUntil < 0 {
+		t.Errorf("Certificate expired %s %d", statsAfter.CertificateNotAfter, statsAfter.CertificateExpireUntil)
 	}
 
 	sup.Shutdown()
