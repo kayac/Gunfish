@@ -396,11 +396,11 @@ func handleFCMResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Com
 		}
 		// handle error response each registration_id
 		atomic.AddInt64(&(srvStats.ErrCount), 1)
-		if err.Error() == fcm.InvalidRegistration.String() {
-			// TODO: should delete registration_id from server data store
+		switch err.Error() {
+		case fcm.InvalidRegistration.String(), fcm.NotRegistered.String():
 			onResponse(result, errorResponseHandler.HookCmd(), cmdq)
 			LogWithFields(logf).Errorf("%s", err)
-		} else {
+		default:
 			LogWithFields(logf).Errorf("Unknown error message: %s", err)
 		}
 	}
