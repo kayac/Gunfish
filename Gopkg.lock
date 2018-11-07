@@ -2,68 +2,145 @@
 
 
 [[projects]]
+  digest = "1:289dd4d7abfb3ad2b5f728fbe9b1d5c1bf7d265a3eb9ef92869af1f7baba4c7a"
   name = "github.com/BurntSushi/toml"
   packages = ["."]
+  pruneopts = ""
   revision = "b26d9c308763d68093482582cea63d69be07a0f0"
   version = "v0.3.0"
 
 [[projects]]
+  digest = "1:467297b87f09684ce7650f2a074a05c13f91e91519606dacbb2170750b1128c0"
   name = "github.com/fukata/golang-stats-api-handler"
   packages = ["."]
+  pruneopts = ""
   revision = "90f0b59102629831cc109845475a8d77043412ec"
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:c2240d9e03dd41ca7393eb4837ecef8c9e17c9d41f724f1674b328cbc9371e4b"
+  name = "github.com/kayac/go-config"
+  packages = ["."]
+  pruneopts = ""
+  revision = "ea064ca49b7ca24c9f7b659a5199e1d3295563c0"
+  version = "v0.0.2"
+
+[[projects]]
   branch = "master"
+  digest = "1:cc128f58c686042a494f604d90f7bef1ee5cfee7ebc7f658e9c35ba50468a555"
   name = "github.com/lestrrat/go-server-starter"
   packages = ["listener"]
+  pruneopts = ""
   revision = "f9cb0b066498d26a90fd918fe265adbb0ea02bcf"
 
 [[projects]]
+  digest = "1:7365acd48986e205ccb8652cc746f09c8b7876030d53710ea6ef7d0bd0dcd7ca"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = ""
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
+
+[[projects]]
+  digest = "1:6b55df4b0517a459af9d3879c99330af4367adcf45f3d0d37ded80a6272ae057"
   name = "github.com/satori/go.uuid"
   packages = ["."]
+  pruneopts = ""
   revision = "879c5887cd475cd7864858769793b2ceb0d44feb"
   version = "v1.1.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:13c64fa5f3972258f7cc74b166c7aaf6f2be0f345a93d8f275f3eaef30049af8"
   name = "github.com/shogo82148/go-gracedown"
   packages = ["."]
+  pruneopts = ""
   revision = "c030b2477760b7d0826b55c430dd9fcf37f4ecaf"
 
 [[projects]]
+  digest = "1:3ac248add5bb40a3c631c5334adcd09aa72d15af2768a5bc0274084ea7b2e5ba"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
+  pruneopts = ""
   revision = "f006c2ac4710855cf0f916dd6b77acf6b048dc6e"
   version = "v1.0.3"
 
 [[projects]]
   branch = "master"
+  digest = "1:d2438f1c85d855408197edcbac2ba137513738ccefbd12396b0af99d5449880b"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
+  pruneopts = ""
   revision = "9419663f5a44be8b34ca85f08abc5fe1be11f8a3"
 
 [[projects]]
   branch = "master"
+  digest = "1:898bc7c802c1e0c20cecd65811e90b7b9bc5651b4a07aefd159451bfb200b2b3"
   name = "golang.org/x/net"
-  packages = ["http2","http2/hpack","idna","lex/httplex","netutil"]
+  packages = [
+    "http2",
+    "http2/hpack",
+    "idna",
+    "lex/httplex",
+    "netutil",
+  ]
+  pruneopts = ""
   revision = "a04bdaca5b32abe1c069418fb7088ae607de5bd0"
 
 [[projects]]
   branch = "master"
+  digest = "1:e9f555036bb1a2f61074131371313348581fa1b643c0e5f8c0a436bf7ce6db69"
   name = "golang.org/x/sys"
-  packages = ["unix","windows"]
+  packages = [
+    "unix",
+    "windows",
+  ]
+  pruneopts = ""
   revision = "314a259e304ff91bd6985da2a7149bbf91237993"
 
 [[projects]]
   branch = "master"
+  digest = "1:6ffd50f330d82d5a92f109253f3831900ccb99f973fb7d614e54ceaf6a41dcec"
   name = "golang.org/x/text"
-  packages = ["collate","collate/build","internal/colltab","internal/gen","internal/tag","internal/triegen","internal/ucd","language","secure/bidirule","transform","unicode/bidi","unicode/cldr","unicode/norm","unicode/rangetable"]
+  packages = [
+    "collate",
+    "collate/build",
+    "internal/colltab",
+    "internal/gen",
+    "internal/tag",
+    "internal/triegen",
+    "internal/ucd",
+    "language",
+    "secure/bidirule",
+    "transform",
+    "unicode/bidi",
+    "unicode/cldr",
+    "unicode/norm",
+    "unicode/rangetable",
+  ]
+  pruneopts = ""
   revision = "1cbadb444a806fd9430d14ad08967ed91da4fa0a"
+
+[[projects]]
+  digest = "1:f0620375dd1f6251d9973b5f2596228cc8042e887cd7f827e4220bc1ce8c30e2"
+  name = "gopkg.in/yaml.v2"
+  packages = ["."]
+  pruneopts = ""
+  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
+  version = "v2.2.1"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e614a2afe5ec3ae363c402ca8b17d729a8bd35661023b304da6141bf6cae32d0"
+  input-imports = [
+    "github.com/fukata/golang-stats-api-handler",
+    "github.com/kayac/go-config",
+    "github.com/lestrrat/go-server-starter/listener",
+    "github.com/satori/go.uuid",
+    "github.com/shogo82148/go-gracedown",
+    "github.com/sirupsen/logrus",
+    "golang.org/x/net/http2",
+    "golang.org/x/net/netutil",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1
