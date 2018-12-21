@@ -295,7 +295,10 @@ You can implement a success custom handler in the same way but a hook command is
 
 ### Test
 
+Requires [dep](https://github.com/golang/dep/) for vendoring.
+
 ```
+$ make get-deps
 $ make test
 ```
 

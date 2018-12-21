@@ -10,7 +10,7 @@ install:
 		install cmd/gunfish/gunfish ${GOPATH}/bin
 
 get-dep-on-ci:
-	curl -sL https://github.com/golang/dep/releases/download/v0.3.1/dep-linux-amd64 > ${GOPATH}/bin/dep
+	curl -sL https://github.com/golang/dep/releases/download/v0.5.0/dep-linux-amd64 > ${GOPATH}/bin/dep
 	chmod +x ${GOPATH}/bin/dep
 
 get-deps:

@@ -1,4 +1,4 @@
-package gunfish
+package gunfish_test
 
 import (
 	"bytes"
@@ -9,6 +9,8 @@ import (
 	"runtime/pprof"
 	"testing"
 	"time"
+
+	gunfish "github.com/kayac/Gunfish"
 )
 
 func BenchmarkGunfish(b *testing.B) {
@@ -20,7 +22,7 @@ func BenchmarkGunfish(b *testing.B) {
 
 	b.StopTimer()
 	go func() {
-		StartServer(conf, Test)
+		gunfish.StartServer(conf, gunfish.Test)
 	}()
 	time.Sleep(time.Second * 1)
 
@@ -50,7 +52,7 @@ func do(jsons *bytes.Buffer) error {
 	}
 	client := &http.Client{}
 	nreq, err := http.NewRequest("POST", u.String(), jsons)
-	nreq.Header.Set("Content-Type", ApplicationJSON)
+	nreq.Header.Set("Content-Type", gunfish.ApplicationJSON)
 	if err != nil {
 		return err
 	}
