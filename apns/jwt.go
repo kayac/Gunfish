@@ -12,7 +12,6 @@ import (
 	"encoding/pem"
 	"io"
 	"math/big"
-	"time"
 )
 
 // https://developer.apple.com/library/content/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/CommunicatingwithAPNs.html#//apple_ref/doc/uid/TP40008194-CH11-SW1
@@ -33,7 +32,7 @@ type ecdsaSignature struct {
 	R, S *big.Int
 }
 
-func CreateJWT(key []byte, kid string, teamID string, now time.Time) (string, error) {
+func CreateJWT(key []byte, kid string, teamID string, unixtime int64) (string, error) {
 	var b bytes.Buffer
 	b.Grow(jwtDefaultGrowSize)
 
@@ -52,7 +51,7 @@ func CreateJWT(key []byte, kid string, teamID string, now time.Time) (string, er
 
 	claim := jwtClaim{
 		Iss: teamID,
-		Iat: now.Unix(),
+		Iat: unixtime,
 	}
 	claimJSON, err := json.Marshal(&claim)
 	if err != nil {
