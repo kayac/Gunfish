@@ -107,6 +107,9 @@ func (ac *Client) NewRequest(token string, h *Header, payload Payload) (*http.Re
 		if h.ApnsTopic != "" {
 			nreq.Header.Set("apns-topic", h.ApnsTopic)
 		}
+		if h.ApnsPushType != "" {
+			nrep.Header.Set("apns-push-type", h.ApnsPushType)
+		}
 	}
 
 	// APNs provider token authenticaton

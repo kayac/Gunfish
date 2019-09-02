@@ -64,7 +64,8 @@ Post JSON example:
     "token": "apns device token",
     "header": {
       "apns-id": "your apns id",
-      "apns-topic": "your app bundle id"
+      "apns-topic": "your app bundle id",
+      "apns-push-type": "alert"
     }
   }
 ]

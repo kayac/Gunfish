@@ -17,6 +17,7 @@ type Header struct {
 	ApnsExpiration string `json:"apns-expiration,omitempty"`
 	ApnsPriority   string `json:"apns-priority,omitempty"`
 	ApnsTopic      string `json:"apns-topic,omitempty"`
+	ApnsPushType   string `json:"apns-push-type,omitempty"`
 }
 
 // Payload is Notification Payload
