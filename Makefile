@@ -1,20 +1,14 @@
 GIT_VER:=$(shell git describe --tags)
 DATE:=$(shell date +%Y-%m-%dT%H:%M:%SZ)
+export GO111MODULE:=on
 
-.PHONY: test get-deps install clean
+.PHONY: test install clean
 
 all: test
 
 install:
 	 cd cmd/gunfish && go build -ldflags "-X main.version=${GIT_VER} -X main.buildDate=${DATE}"
 		install cmd/gunfish/gunfish ${GOPATH}/bin
-
-get-dep-on-ci:
-	curl -sL https://github.com/golang/dep/releases/download/v0.5.0/dep-linux-amd64 > ${GOPATH}/bin/dep
-	chmod +x ${GOPATH}/bin/dep
-
-get-deps:
-	dep ensure
 
 packages:
 	cd cmd/gunfish \
