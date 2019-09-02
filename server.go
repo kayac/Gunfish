@@ -1,6 +1,7 @@
 package gunfish
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -17,8 +19,7 @@ import (
 	"github.com/kayac/Gunfish/apns"
 	"github.com/kayac/Gunfish/config"
 	"github.com/kayac/Gunfish/fcm"
-	"github.com/lestrrat/go-server-starter/listener"
-	"github.com/shogo82148/go-gracedown"
+	"github.com/lestrrat-go/server-starter/listener"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/netutil"
 )
@@ -129,9 +130,6 @@ func StartServer(conf config.Config, env Environment) {
 	// Gunfish provider would be overload, and decrease performance.
 	llis := netutil.LimitListener(lis, conf.Provider.MaxConnections)
 
-	// signal handling
-	go startSignalReciever(lis)
-
 	// Start Gunfish provider
 	LogWithFields(logrus.Fields{
 		"type": "provider",
@@ -153,9 +151,22 @@ func StartServer(conf config.Config, env Environment) {
 	mux.HandleFunc("/stats/app", prov.StatsHandler())
 	mux.HandleFunc("/stats/profile", stats_api.Handler)
 
-	if err := gracedown.Serve(llis, mux); err != nil {
-		LogWithFields(logrus.Fields{}).Error(err)
-	}
+	srv := &http.Server{Handler: mux}
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		if err := srv.Serve(llis); err != nil {
+			LogWithFields(logrus.Fields{}).Error(err)
+		}
+		wg.Done()
+	}()
+
+	// signal handling
+	wg.Add(1)
+	go startSignalReciever(&wg, srv)
+
+	// wait for server shutdown complete
+	wg.Wait()
 
 	// if Gunfish server stop, Close queue
 	LogWithFields(logrus.Fields{
@@ -379,26 +390,28 @@ func mapToAlert(mapVal map[string]interface{}, alert *apns.Alert) {
 	}
 }
 
-func startSignalReciever(lis net.Listener) {
+func startSignalReciever(wg *sync.WaitGroup, srv *http.Server) {
+	defer wg.Done()
+
 	sigChan := make(chan os.Signal)
-	signal.Notify(sigChan, syscall.SIGTERM)
+	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT)
 	s := <-sigChan
 	switch s {
 	case syscall.SIGHUP:
 		LogWithFields(logrus.Fields{
 			"type": "provider",
 		}).Info("Gunfish recieved SIGHUP signal.")
-		gracedown.Close()
+		srv.Shutdown(context.Background())
 	case syscall.SIGTERM:
 		LogWithFields(logrus.Fields{
 			"type": "provider",
 		}).Info("Gunfish recieved SIGTERM signal.")
-		gracedown.Close()
+		srv.Shutdown(context.Background())
 	case syscall.SIGINT:
 		LogWithFields(logrus.Fields{
 			"type": "provider",
 		}).Info("Gunfish recieved SIGINT signal. Stopping server now...")
-		gracedown.Close()
+		srv.Shutdown(context.Background())
 	}
 }
 
