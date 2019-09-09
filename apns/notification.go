@@ -17,6 +17,7 @@ type Header struct {
 	ApnsExpiration string `json:"apns-expiration,omitempty"`
 	ApnsPriority   string `json:"apns-priority,omitempty"`
 	ApnsTopic      string `json:"apns-topic,omitempty"`
+	ApnsPushType   string `json:"apns-push-type,omitempty"`
 }
 
 // Payload is Notification Payload
@@ -32,6 +33,9 @@ type APS struct {
 	Sound            string      `json:"sound,omitempty"`
 	ContentAvailable int         `json:"content-available,omitempty"`
 	Category         string      `json:"category,omitempty"`
+	ThreadID         string      `json:"thread-id,omitempty"`
+	MutableContent   int         `json:"mutable-content,omitempty"`
+	TargetContentID  string      `json:"target-content-id,omitempty"`
 }
 
 // Alert is a part of APS
