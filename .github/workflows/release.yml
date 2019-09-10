@@ -1,7 +1,8 @@
 name: release
 on:
   - create:
-      - 'v[0-9]+\.[0-9]+\.[0-9]+'
+      ref_type: tag
+      ref: 'v[0-9]+\.[0-9]+\.[0-9]+'
 
 jobs:
   release:
@@ -25,7 +26,7 @@ jobs:
     - name: packages
       run: make packages TAG=$GITHUB_REF
 
-    - name: release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: make release TAG=$GITHUB_REF
+#    - name: release
+#      env:
+#        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#      run: make release TAG=$GITHUB_REF
