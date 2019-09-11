@@ -17,9 +17,9 @@ packages:
 			-arch="amd64" \
 			-output "../../pkg/{{.Dir}}-${GIT_VER}-{{.OS}}-{{.Arch}}" \
 			-gcflags "-trimpath=${GOPATH}" \
-			-ldflags "-w -X main.version=${GIT_VER} -X main.buildDate=${DATE} -extldflags \"-static\"" \
+			-ldflags "-w -X main.version=${TAG} -X main.buildDate=${DATE} -extldflags \"-static\"" \
 			-tags "netgo"
-	cd pkg && find . -name "*${GIT_VER}*" -type f -exec zip {}.zip {} \;
+	cd pkg && find . -name "*${TAG}*" -type f -exec zip {}.zip {} \;
 
 gen-cert:
 	test/scripts/gen_test_cert.sh
@@ -39,3 +39,6 @@ build:
 
 tools/%:
 	go build -gcflags="-trimpath=${HOME}" -ldflags="-w" test/tools/$*/$*.go
+
+release:
+	ghr ${TAG} pkg/

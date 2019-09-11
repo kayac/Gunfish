@@ -1,0 +1,34 @@
+name: Release
+on:
+  push:
+    branches:
+      - "!**/*"
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    name: Release
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Go
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v1
+
+    - name: setup tools
+      run: |
+        go get github.com/mitchellh/gox
+        go get github.com/tcnksm/ghr
+
+    - name: packages
+      run: PATH=~/go/bin:$PATH make packages TAG=$GITHUB_REF
+
+    - name: release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: PATH=~/go/bin:$PATH make release TAG=$GITHUB_REF
