@@ -38,6 +38,6 @@ jobs:
         echo $DOCKER_PASSWORD | docker login -u fujiwara --password-stdin
         cd docker
         docker build --build-arg version=$TAG -t kayac/gunfish:$TAG .
-        docker push
+        docker push kayac/gunfish:$TAG
       env:
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
