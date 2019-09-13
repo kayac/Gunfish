@@ -31,3 +31,13 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: PATH=~/go/bin:$PATH make release TAG=$(echo $GITHUB_REF | cut -d/ -f3)
+
+    - name: docker
+      run: |
+        export TAG=$(echo $GITHUB_REF | cut -d/ -f3)
+        echo $DOCKER_PASSWORD | docker login -u fujiwara --password-stdin
+        cd docker
+        docker build --build-arg version=$TAG -t kayac/gunfish:$TAG .
+        docker push
+      env:
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}

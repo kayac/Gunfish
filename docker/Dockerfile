@@ -1,5 +1,5 @@
-FROM alpine:3.6
-MAINTAINER Fujiwara Shunichiro <fujiwara.shunichiro@gmail.com>
+FROM alpine:3.9
+LABEL maintainer "FUJIWARA Shunichiro <fujiwara.shunichiro@gmail.com>"
 
 ARG version
 
