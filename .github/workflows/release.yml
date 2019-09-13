@@ -25,9 +25,9 @@ jobs:
         go get github.com/tcnksm/ghr
 
     - name: packages
-      run: PATH=~/go/bin:$PATH make packages TAG=$GITHUB_REF
+      run: PATH=~/go/bin:$PATH make packages TAG=$(echo $GITHUB_REF | cut -d/ -f3)
 
     - name: release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: PATH=~/go/bin:$PATH make release TAG=$GITHUB_REF
+      run: PATH=~/go/bin:$PATH make release TAG=$(echo $GITHUB_REF | cut -d/ -f3)
