@@ -45,6 +45,7 @@ type SectionProvider struct {
 	DebugPort        int
 	MaxConnections   int    `toml:"max_connections"`
 	ErrorHook        string `toml:"error_hook"`
+	ErrorHookTo      string `toml:"error_hook_to"`
 }
 
 // SectionApns is the configure which is loaded from gunfish.toml

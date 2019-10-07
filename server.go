@@ -34,7 +34,6 @@ type Provider struct {
 // Therefore, you can specifies hook command which is set at toml file.
 type ResponseHandler interface {
 	OnResponse(Result)
-	HookCmd() string
 }
 
 // DefaultResponseHandler is the default ResponseHandler if not specified.
@@ -46,12 +45,6 @@ type DefaultResponseHandler struct {
 func (rh DefaultResponseHandler) OnResponse(result Result) {
 }
 
-// HookCmd returns hook command to execute after getting response from APNS
-// only when to get error response.
-func (rh DefaultResponseHandler) HookCmd() string {
-	return rh.Hook
-}
-
 // StartServer starts an apns provider server on http.
 func StartServer(conf config.Config, env Environment) {
 	// Initialize DefaultResponseHandler if response handlers are not defined.
@@ -60,7 +53,7 @@ func StartServer(conf config.Config, env Environment) {
 	}
 
 	if errorResponseHandler == nil {
-		InitErrorResponseHandler(DefaultResponseHandler{Hook: conf.Provider.ErrorHook})
+		InitErrorResponseHandler(DefaultResponseHandler{})
 	}
 
 	// Init Provider
@@ -337,7 +330,7 @@ func (prov *Provider) StatsHandler() http.HandlerFunc {
 		atomic.StoreInt64(&(srvStats.QueueSize), int64(len(prov.Sup.queue)))
 		atomic.StoreInt64(&(srvStats.RetryQueueSize), int64(len(prov.Sup.retryq)))
 		atomic.StoreInt64(&(srvStats.WorkersQueueSize), int64(wqs))
-		atomic.StoreInt64(&(srvStats.CommandQueueSize), int64(len(prov.Sup.cmdq)))
+		atomic.StoreInt64(&(srvStats.ErrorQueueSize), int64(len(prov.Sup.errq)))
 		res.WriteHeader(http.StatusOK)
 		encoder := json.NewEncoder(res)
 		err := encoder.Encode(srvStats.GetStats())

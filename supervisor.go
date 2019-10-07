@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -24,7 +26,7 @@ import (
 type Supervisor struct {
 	queue   chan *[]Request // supervisor's queue that recieves POST requests.
 	retryq  chan Request    // enqueues this retry queue when to failed to send notification on the http layer.
-	cmdq    chan Command    // enqueues this command queue when to get error response from apns.
+	errq    chan Error      // enqueues this command queue when to get error response from apns.
 	exit    chan struct{}   // exit channel is used to stop the supervisor.
 	ticker  *time.Ticker    // ticker checks retry queue that has notifications to resend periodically.
 	wgrp    *sync.WaitGroup
@@ -54,9 +56,8 @@ type SenderResponse struct {
 }
 
 // Command has execute command and input stream.
-type Command struct {
-	command string
-	input   []byte
+type Error struct {
+	input []byte
 }
 
 // EnqueueClientRequest enqueues request to supervisor's queue from external application service
@@ -96,7 +97,7 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 	s := Supervisor{
 		queue:  make(chan *[]Request, conf.Provider.QueueSize),
 		retryq: make(chan Request, conf.Provider.RequestQueueSize*conf.Provider.WorkerNum),
-		cmdq:   make(chan Command, wqSize*conf.Provider.WorkerNum),
+		errq:   make(chan Error, wqSize*conf.Provider.WorkerNum),
 		exit:   make(chan struct{}, 1),
 		ticker: time.NewTicker(RetryWaitTime),
 		wgrp:   swgrp,
@@ -133,7 +134,7 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 		}
 	}()
 
-	if err := s.startCommandWorkers(conf); err != nil {
+	if err := s.startErrorWorkers(conf); err != nil {
 		return Supervisor{}, err
 	}
 
@@ -190,20 +191,56 @@ func (s *Supervisor) startWorkers(conf *config.Config, wqSize int) error {
 	return err
 }
 
-func (s *Supervisor) startCommandWorkers(conf *config.Config) error {
-	// spawn command
+func (s *Supervisor) startErrorWorkers(conf *config.Config) error {
+	hookCmd := conf.Provider.ErrorHook
+	hookTo := conf.Provider.ErrorHookTo
+	logf := func() logrus.Fields {
+		return logrus.Fields{"type": "error_worker"}
+	}
+	// not defined
+	if hookCmd == "" && hookTo == "" {
+		LogWithFields(logf()).Warnf("Neither of error_hook and error_hook_output are not definde.")
+		go func() {
+			<-s.errq // dispose simply
+		}()
+		return nil
+	}
+
+	// stdout / stderr
+	if hookTo != "" {
+		var out io.Writer
+		switch strings.ToLower(hookTo) {
+		case "stdout":
+			out = os.Stdout
+		case "stderr":
+			out = os.Stderr
+		default:
+			LogWithFields(logf()).Warnf("error_hook_to allows stdout or stderr only. dispose hook payloads to /dev/null")
+			out = ioutil.Discard
+		}
+		go func() {
+			for e := range s.errq {
+				if _, err := out.Write(e.input); err != nil {
+					LogWithFields(logf()).Warnf("failed to write to %s: %s", hookTo, err)
+					return
+				}
+			}
+		}()
+		return nil
+	}
+
+	// otherwise spawn command
 	for i := 0; i < conf.Provider.WorkerNum; i++ {
 		s.wgrp.Add(1)
 		go func() {
-			logf := logrus.Fields{"type": "cmd_worker"}
-			for c := range s.cmdq {
-				LogWithFields(logf).Debugf("invoking command: %s %s", c.command, string(c.input))
-				src := bytes.NewBuffer(c.input)
-				out, err := InvokePipe(c.command, src)
+			for e := range s.errq {
+				LogWithFields(logf()).Debugf("invoking command: %s %s", hookCmd, string(e.input))
+				src := bytes.NewBuffer(e.input)
+				out, err := InvokePipe(hookCmd, src)
 				if err != nil {
-					LogWithFields(logf).Errorf("(%s) %s", err.Error(), string(out))
+					LogWithFields(logf()).Errorf("(%s) %s", err.Error(), string(out))
 				} else {
-					LogWithFields(logf).Debugf("Success to execute command")
+					LogWithFields(logf()).Debug("Success to execute command")
 				}
 			}
 			s.wgrp.Done()
@@ -223,7 +260,7 @@ func (s *Supervisor) Shutdown() {
 	tryCnt := 0
 	for zeroCnt < RestartWaitCount {
 		// if 's.counter' is not 0 potentially, here loop should not cancel to wait.
-		if len(s.queue)+len(s.cmdq)+len(s.retryq)+s.workersAllQueueLength() > 0 {
+		if len(s.queue)+len(s.errq)+len(s.retryq)+s.workersAllQueueLength() > 0 {
 			zeroCnt = 0
 			tryCnt++
 		} else {
@@ -242,7 +279,7 @@ func (s *Supervisor) Shutdown() {
 		time.Sleep(ShutdownWaitTime)
 	}
 	close(s.exit)
-	close(s.cmdq)
+	close(s.errq)
 	s.wgrp.Wait()
 	close(s.queue)
 	close(s.retryq)
@@ -278,7 +315,7 @@ func (s *Supervisor) spawnWorker(w Worker, conf *config.Config) {
 			case reqs := <-s.queue:
 				w.receiveRequests(reqs)
 			case resp := <-w.respq:
-				w.receiveResponse(resp, s.retryq, s.cmdq)
+				w.receiveResponse(resp, s.retryq, s.errq)
 			case <-s.exit:
 				return
 			}
@@ -289,7 +326,7 @@ func (s *Supervisor) spawnWorker(w Worker, conf *config.Config) {
 	w.wgrp.Wait()
 }
 
-func (w *Worker) receiveResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Command) {
+func (w *Worker) receiveResponse(resp SenderResponse, retryq chan<- Request, errq chan Error) {
 	req := resp.Req
 
 	switch t := req.Notification.(type) {
@@ -307,7 +344,7 @@ func (w *Worker) receiveResponse(resp SenderResponse, retryq chan<- Request, cmd
 			"response_time":  resp.RespTime,
 			"resp_uid":       resp.UID,
 		}
-		handleAPNsResponse(resp, retryq, cmdq, logf)
+		handleAPNsResponse(resp, retryq, errq, logf)
 	case fcm.Payload:
 		p := req.Notification.(fcm.Payload)
 		logf := logrus.Fields{
@@ -321,14 +358,14 @@ func (w *Worker) receiveResponse(resp SenderResponse, retryq chan<- Request, cmd
 			"response_time":  resp.RespTime,
 			"resp_uid":       resp.UID,
 		}
-		handleFCMResponse(resp, retryq, cmdq, logf)
+		handleFCMResponse(resp, retryq, errq, logf)
 	default:
 		LogWithFields(logrus.Fields{"type": "worker"}).Infof("Unknown request type:%s", t)
 	}
 
 }
 
-func handleAPNsResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Command, logf logrus.Fields) {
+func handleAPNsResponse(resp SenderResponse, retryq chan<- Request, errq chan Error, logf logrus.Fields) {
 	req := resp.Req
 
 	// Response handling
@@ -342,7 +379,7 @@ func handleAPNsResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Co
 			logf["status"] = result.Status()
 			LogWithFields(logf).Errorf("%s", resp.Err)
 			// Error handling
-			onResponse(result, errorResponseHandler.HookCmd(), cmdq)
+			onResponse(result, errq)
 		} else {
 			// if 'result' is nil, HTTP connection error with APNS.
 			retry(retryq, req, errors.New("http connection error between APNs"), logf)
@@ -362,17 +399,17 @@ func handleAPNsResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Co
 					retry(retryq, req, err, logf)
 				}
 
-				onResponse(result, errorResponseHandler.HookCmd(), cmdq)
+				onResponse(result, errq)
 				LogWithFields(logf).Errorf("%s", err)
 			} else {
-				onResponse(result, "", cmdq)
+				onResponse(result, errq)
 				LogWithFields(logf).Info("Succeeded to send a notification")
 			}
 		}
 	}
 }
 
-func handleFCMResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Command, logf logrus.Fields) {
+func handleFCMResponse(resp SenderResponse, retryq chan<- Request, errq chan Error, logf logrus.Fields) {
 	if resp.Err != nil {
 		req := resp.Req
 		LogWithFields(logf).Warnf("response is nil. reason: %s", resp.Err.Error())
@@ -408,7 +445,7 @@ func handleFCMResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Com
 		atomic.AddInt64(&(srvStats.ErrCount), 1)
 		switch err.Error() {
 		case fcm.InvalidRegistration.String(), fcm.NotRegistered.String():
-			onResponse(result, errorResponseHandler.HookCmd(), cmdq)
+			onResponse(result, errq)
 			LogWithFields(logf).Errorf("%s", err)
 		default:
 			LogWithFields(logf).Errorf("Unknown error message: %s", err)
@@ -505,7 +542,7 @@ func (s Supervisor) workersAllQueueLength() int {
 	return sum
 }
 
-func onResponse(result Result, cmd string, cmdq chan<- Command) {
+func onResponse(result Result, errq chan<- Error) {
 	logf := logrus.Fields{
 		"provider": result.Provider(),
 		"type":     "on_response",
@@ -521,20 +558,15 @@ func onResponse(result Result, cmd string, cmdq chan<- Command) {
 		successResponseHandler.OnResponse(result)
 	}
 
-	if cmd == "" {
-		return
-	}
-
 	b, _ := result.MarshalJSON()
-	command := Command{
-		command: cmd,
-		input:   b,
+	error := Error{
+		input: b,
 	}
 	select {
-	case cmdq <- command:
-		LogWithFields(logf).Debugf("Enqueue command: %v", command)
+	case errq <- error:
+		LogWithFields(logf).Debugf("Enqueue error: %v", error)
 	default:
-		LogWithFields(logf).Warnf("Command queue is full, so could not execute commnad: %v", command)
+		LogWithFields(logf).Warnf("Error queue is full. dropping error: %v", error)
 	}
 }
 

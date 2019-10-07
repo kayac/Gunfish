@@ -20,7 +20,7 @@ type Stats struct {
 	QueueSize              int64     `json:"queue_size"`
 	RetryQueueSize         int64     `json:"retry_queue_size"`
 	WorkersQueueSize       int64     `json:"workers_queue_size"`
-	CommandQueueSize       int64     `json:"cmdq_queue_size"`
+	ErrorQueueSize         int64     `json:"error_queue_size"`
 	RetryCount             int64     `json:"retry_count"`
 	RequestCount           int64     `json:"req_count"`
 	SentCount              int64     `json:"sent_count"`
