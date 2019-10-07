@@ -121,7 +121,7 @@ Response example:
   "queue_size": 0,
   "retry_queue_size": 0,
   "workers_queue_size": 0,
-  "cmdq_queue_size": 0,
+  "error_queue_size": 0,
   "retry_count": 0,
   "req_count": 0,
   "sent_count": 0,
@@ -143,7 +143,7 @@ start\_at | The time of started
 queue\_size | queue size of requests
 retry\_queue\_size | queue size for resending notification
 workers\_queue\_size | summary of worker's queue size
-command\_queue\_size | error hook command queue size
+error\_queue\_size | error hook command queue size
 retry\_count | summary of retry count
 request\_count | request count to gunfish
 err\_count | count of recieving error response
@@ -193,11 +193,13 @@ cert_file        |optional| The cert file path.
 kid              |optional| kid for APNs provider authentication token.
 team_id          |optional| team id for APNs provider authentication token.
 error_hook       |optional| Error hook command. This command runs when Gunfish catches an error response.
+error_hook_to    |optional| Error hook outputs into stdout/stderr.
 api_key          |optional| FCM api key. If you want to delivery notifications to android, it is required.
 
-## Error Hook
+## Error Hook payload
 
-Error hook command can get an each error response with JSON format by STDIN.
+Error hook command/stdout/stderr will get an each error response with JSON format.
+The command accepts a payload by STDIN.
 
 for example JSON structure: (>= v0.2.x)
 ```json5
@@ -265,41 +267,9 @@ $ go get github.com/lestrrat/go-server-starter/cmd/start_server
 $ start_server --port 38003 --pid-file gunfish.pid -- ./gunfish -c conf/gunfish.toml
 ```
 
-## Customize
-
-### How to Implement Response Handlers
-
-If you have to handle something on error or on success, you should implement error or success handlers.
-For example handlers you should implement is given below:
-
-```go
-type CustomYourErrorHandler struct {
-    hookCmd string
-}
-
-func (ch CustomYourErrorHandler) OnResponse(result Result){
-    // ...
-}
-
-func (ch CustomYourErrorHandler) HookCmd( ) string {
-    return ch.hookCmd
-}
-```
-
-Then you can use these handlers to set before to start gunfish server `( gunfish.StartServer( Config, Environment ) )`.
-
-```go
-InitErrorResponseHandler(CustomYourErrorHandler{hookCmd: "echo 'on error!'"})
-```
-
-You can implement a success custom handler in the same way but a hook command is not executed in the success handler in order not to make cpu resource too tight.
-
 ### Test
 
-Requires [dep](https://github.com/golang/dep/) for vendoring.
-
 ```
-$ make get-deps
 $ make test
 ```
 
