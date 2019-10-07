@@ -183,18 +183,18 @@ api_key = "API key for FCM"
 
 param            | status | description
 ---------------- | ------ | --------------------------------------------------------------------------------------
-port             |optional| Listen port number.
-worker_num       |optional| Number of Gunfish owns http clients.
-queue_size       |optional| Limit number of posted JSON from the developer application.
-max_request_size |optional| Limit size of Posted JSON array.
-max_connections  |optional| Max connections
-key_file         |required| The key file path.
-cert_file        |optional| The cert file path.
-kid              |optional| kid for APNs provider authentication token.
-team_id          |optional| team id for APNs provider authentication token.
-error_hook       |optional| Error hook command. This command runs when Gunfish catches an error response.
-error_hook_to    |optional| Error hook outputs into stdout/stderr.
-api_key          |optional| FCM api key. If you want to delivery notifications to android, it is required.
+port               |optional| Listen port number.
+worker\_num        |optional| Number of Gunfish owns http clients.
+queue_size         |optional| Limit number of posted JSON from the developer application.
+max\_request\_size |optional| Limit size of Posted JSON array.
+max\_connections   |optional| Max connections
+key\_file          |required| The key file path.
+cert\_file         |optional| The cert file path.
+kid                |optional| kid for APNs provider authentication token.
+team\_id           |optional| team id for APNs provider authentication token.
+error\_hook        |optional| Error hook command. This command runs when Gunfish catches an error response.
+error\_hook\_to    |optional| Error hook outputs into stdout/stderr.
+api\_key           |optional| FCM api key. If you want to delivery notifications to android, it is required.
 
 ## Error Hook payload
 

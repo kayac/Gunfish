@@ -1,6 +1,7 @@
 package gunfish
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -199,7 +200,7 @@ func (s *Supervisor) startErrorWorkers(conf *config.Config) error {
 	}
 	// not defined
 	if hookCmd == "" && hookTo == "" {
-		LogWithFields(logf()).Warnf("Neither of error_hook and error_hook_output are not definde.")
+		LogWithFields(logf()).Warnf("Neither of error_hook and error_hook_to are not definde.")
 		go func() {
 			<-s.errq // dispose simply
 		}()
@@ -212,15 +213,20 @@ func (s *Supervisor) startErrorWorkers(conf *config.Config) error {
 		switch strings.ToLower(hookTo) {
 		case "stdout":
 			out = os.Stdout
+			LogWithFields(logf()).Info("error_hook_to set output to stdout")
 		case "stderr":
 			out = os.Stderr
+			LogWithFields(logf()).Info("error_hook_to set output to stderr")
 		default:
-			LogWithFields(logf()).Warnf("error_hook_to allows stdout or stderr only. dispose hook payloads to /dev/null")
+			LogWithFields(logf()).Warn("error_hook_to allows stdout or stderr only. dispose hook payloads to /dev/null")
 			out = ioutil.Discard
 		}
 		go func() {
+			w := bufio.NewWriter(out)
 			for e := range s.errq {
-				if _, err := out.Write(e.input); err != nil {
+				w.Write(e.input)
+				io.WriteString(w, "\n")
+				if err := w.Flush(); err != nil {
 					LogWithFields(logf()).Warnf("failed to write to %s: %s", hookTo, err)
 					return
 				}
@@ -412,7 +418,7 @@ func handleAPNsResponse(resp SenderResponse, retryq chan<- Request, errq chan Er
 func handleFCMResponse(resp SenderResponse, retryq chan<- Request, errq chan Error, logf logrus.Fields) {
 	if resp.Err != nil {
 		req := resp.Req
-		LogWithFields(logf).Warnf("response is nil. reason: %s", resp.Err.Error())
+		LogWithFields(logf).Warnf("unexpected response. reason: %s", resp.Err.Error())
 		if req.Tries < SendRetryCount {
 			req.Tries++
 			atomic.AddInt64(&(srvStats.RetryCount), 1)
