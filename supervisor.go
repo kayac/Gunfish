@@ -133,25 +133,17 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 		}
 	}()
 
-	// spawn command
-	for i := 0; i < conf.Provider.WorkerNum; i++ {
-		s.wgrp.Add(1)
-		go func() {
-			logf := logrus.Fields{"type": "cmd_worker"}
-			for c := range s.cmdq {
-				LogWithFields(logf).Debugf("invoking command: %s %s", c.command, string(c.input))
-				src := bytes.NewBuffer(c.input)
-				out, err := InvokePipe(c.command, src)
-				if err != nil {
-					LogWithFields(logf).Errorf("(%s) %s", err.Error(), string(out))
-				} else {
-					LogWithFields(logf).Debugf("Success to execute command")
-				}
-			}
-			s.wgrp.Done()
-		}()
+	if err := s.startCommandWorkers(conf); err != nil {
+		return Supervisor{}, err
 	}
 
+	if err := s.startWorkers(conf, wqSize); err != nil {
+		return Supervisor{}, err
+	}
+	return s, nil
+}
+
+func (s *Supervisor) startWorkers(conf *config.Config, wqSize int) error {
 	// Spawn workers
 	var err error
 	for i := 0; i < conf.Provider.WorkerNum; i++ {
@@ -195,11 +187,29 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 			"worker_id": i,
 		}).Debugf("Spawned worker-%d.", i)
 	}
+	return err
+}
 
-	if err != nil {
-		return Supervisor{}, err
+func (s *Supervisor) startCommandWorkers(conf *config.Config) error {
+	// spawn command
+	for i := 0; i < conf.Provider.WorkerNum; i++ {
+		s.wgrp.Add(1)
+		go func() {
+			logf := logrus.Fields{"type": "cmd_worker"}
+			for c := range s.cmdq {
+				LogWithFields(logf).Debugf("invoking command: %s %s", c.command, string(c.input))
+				src := bytes.NewBuffer(c.input)
+				out, err := InvokePipe(c.command, src)
+				if err != nil {
+					LogWithFields(logf).Errorf("(%s) %s", err.Error(), string(out))
+				} else {
+					LogWithFields(logf).Debugf("Success to execute command")
+				}
+			}
+			s.wgrp.Done()
+		}()
 	}
-	return s, nil
+	return nil
 }
 
 // Shutdown supervisor
