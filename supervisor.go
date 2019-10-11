@@ -195,48 +195,61 @@ func (s *Supervisor) startWorkers(conf *config.Config, wqSize int) error {
 func (s *Supervisor) startErrorWorkers(conf *config.Config) error {
 	hookCmd := conf.Provider.ErrorHook
 	hookTo := conf.Provider.ErrorHookTo
-	logf := func() logrus.Fields {
-		return logrus.Fields{"type": "error_worker"}
-	}
-	// not defined
-	if hookCmd == "" && hookTo == "" {
-		LogWithFields(logf()).Warnf("Neither of error_hook and error_hook_to are not definde.")
-		go func() {
-			<-s.errq // dispose simply
-		}()
-		return nil
-	}
+	logf := logrus.Fields{"type": "error_worker"}
 
 	// stdout / stderr
 	if hookTo != "" {
-		var out io.Writer
-		switch strings.ToLower(hookTo) {
-		case "stdout":
-			out = os.Stdout
-			LogWithFields(logf()).Info("error_hook_to set output to stdout")
-		case "stderr":
-			out = os.Stderr
-			LogWithFields(logf()).Info("error_hook_to set output to stderr")
-		default:
-			LogWithFields(logf()).Warn("error_hook_to allows stdout or stderr only. dispose hook payloads to /dev/null")
-			out = ioutil.Discard
-		}
-		go func() {
-			w := bufio.NewWriter(out)
-			for e := range s.errq {
-				w.Write(e.input)
-				io.WriteString(w, "\n")
-				if err := w.Flush(); err != nil {
-					LogWithFields(logf()).Warnf("failed to write to %s: %s", hookTo, err)
-					return
-				}
-			}
-		}()
-		return nil
+		return s.startErrorHookToWorker(hookTo)
 	}
 
-	// otherwise spawn command
-	for i := 0; i < conf.Provider.WorkerNum; i++ {
+	// cmd
+	if hookCmd != "" {
+		return s.startErrorCmdWorker(hookCmd, conf.Provider.WorkerNum)
+	}
+
+	// not defined
+	LogWithFields(logf).Warnf("Neither of error_hook and error_hook_to are not defined.")
+	go func() {
+		<-s.errq // dispose simply
+	}()
+	return nil
+}
+
+func (s *Supervisor) startErrorHookToWorker(hookTo string) error {
+	logf := func() logrus.Fields {
+		return logrus.Fields{"type": "error_worker"}
+	}
+	var out io.Writer
+	switch strings.ToLower(hookTo) {
+	case "stdout":
+		out = os.Stdout
+		LogWithFields(logf()).Info("error_hook_to set output to stdout")
+	case "stderr":
+		out = os.Stderr
+		LogWithFields(logf()).Info("error_hook_to set output to stderr")
+	default:
+		LogWithFields(logf()).Warn("error_hook_to allows stdout or stderr only. dispose hook payloads to /dev/null")
+		out = ioutil.Discard
+	}
+	go func() {
+		w := bufio.NewWriter(out)
+		for e := range s.errq {
+			w.Write(e.input)
+			io.WriteString(w, "\n")
+			if err := w.Flush(); err != nil {
+				LogWithFields(logf()).Warnf("failed to write to %s: %s", hookTo, err)
+				return
+			}
+		}
+	}()
+	return nil
+}
+
+func (s *Supervisor) startErrorCmdWorker(hookCmd string, workers int) error {
+	logf := func() logrus.Fields {
+		return logrus.Fields{"type": "error_worker"}
+	}
+	for i := 0; i < workers; i++ {
 		s.wgrp.Add(1)
 		go func() {
 			for e := range s.errq {
