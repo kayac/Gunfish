@@ -300,7 +300,7 @@ func (s *Supervisor) startErrorCmdPersistentWorker(hookCmd string) error {
 			}
 			w.Write(e.input)
 			w.WriteString("\n")
-			if err != w.Flush() {
+			if err := w.Flush(); err != nil {
 				LogWithFields(logf()).Warnf("failed to write STDIN %s, payload: %s", err, string(e.input))
 				w = nil
 			}
