@@ -193,6 +193,7 @@ cert\_file         |optional| The cert file path.
 kid                |optional| kid for APNs provider authentication token.
 team\_id           |optional| team id for APNs provider authentication token.
 error\_hook        |optional| Error hook command. This command runs when Gunfish catches an error response.
+error\_hook\_command\_persistent |optional|Persist error hook command.
 error\_hook\_to    |optional| Error hook outputs into stdout/stderr.
 api\_key           |optional| FCM api key. If you want to delivery notifications to android, it is required.
 
