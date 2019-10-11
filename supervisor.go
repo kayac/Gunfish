@@ -204,7 +204,11 @@ func (s *Supervisor) startErrorWorkers(conf *config.Config) error {
 
 	// cmd
 	if hookCmd != "" {
-		return s.startErrorCmdWorker(hookCmd, conf.Provider.WorkerNum)
+		if conf.Provider.ErrorHookCommandPersistent {
+			return s.startErrorCmdPersistentWorker(hookCmd)
+		} else {
+			return s.startErrorCmdWorker(hookCmd, conf.Provider.WorkerNum)
+		}
 	}
 
 	// not defined
@@ -231,7 +235,9 @@ func (s *Supervisor) startErrorHookToWorker(hookTo string) error {
 		LogWithFields(logf()).Warn("error_hook_to allows stdout or stderr only. dispose hook payloads to /dev/null")
 		out = ioutil.Discard
 	}
+	s.wgrp.Add(1)
 	go func() {
+		defer s.wgrp.Done()
 		w := bufio.NewWriter(out)
 		for e := range s.errq {
 			w.Write(e.input)
@@ -252,6 +258,7 @@ func (s *Supervisor) startErrorCmdWorker(hookCmd string, workers int) error {
 	for i := 0; i < workers; i++ {
 		s.wgrp.Add(1)
 		go func() {
+			defer s.wgrp.Done()
 			for e := range s.errq {
 				LogWithFields(logf()).Debugf("invoking command: %s %s", hookCmd, string(e.input))
 				src := bytes.NewBuffer(e.input)
@@ -262,9 +269,43 @@ func (s *Supervisor) startErrorCmdWorker(hookCmd string, workers int) error {
 					LogWithFields(logf()).Debug("Success to execute command")
 				}
 			}
-			s.wgrp.Done()
 		}()
 	}
+	return nil
+}
+
+func (s *Supervisor) startErrorCmdPersistentWorker(hookCmd string) error {
+	logf := func() logrus.Fields {
+		return logrus.Fields{"type": "error_worker"}
+	}
+	_w, err := InvokePipePersistent(hookCmd)
+	if err != nil {
+		LogWithFields(logf()).Errorf("failed to invoke command %s", hookCmd)
+		return err
+	}
+	w := bufio.NewWriter(_w)
+	s.wgrp.Add(1)
+	go func() {
+		defer s.wgrp.Done()
+		LogWithFields(logf()).Debugf("invoking command: %s", hookCmd)
+		for e := range s.errq {
+			if w == nil {
+				_w, err := InvokePipePersistent(hookCmd)
+				if err != nil {
+					LogWithFields(logf()).Errorf("failed to invoke command %s", hookCmd)
+					LogWithFields(logf()).Warnf("failed to process error hook payload: %s", string(e.input))
+					continue
+				}
+				w = bufio.NewWriter(_w)
+			}
+			w.Write(e.input)
+			w.WriteString("\n")
+			if err != w.Flush() {
+				LogWithFields(logf()).Warnf("failed to write STDIN %s, payload: %s", err, string(e.input))
+				w = nil
+			}
+		}
+	}()
 	return nil
 }
 
@@ -589,6 +630,24 @@ func onResponse(result Result, errq chan<- Error) {
 	}
 }
 
+func InvokePipePersistent(hook string) (io.WriteCloser, error) {
+	cmd := exec.Command("sh", "-c", hook)
+
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed: %v %s", cmd, err.Error())
+	}
+
+	// merge std(out|err) of command to gunfish
+	if OutputHookStdout {
+		cmd.Stdout = os.Stdout
+	}
+	if OutputHookStderr {
+		cmd.Stderr = os.Stderr
+	}
+	return stdin, cmd.Start()
+}
+
 func InvokePipe(hook string, src io.Reader) ([]byte, error) {
 	logf := logrus.Fields{"type": "invoke_pipe"}
 	cmd := exec.Command("sh", "-c", hook)
@@ -616,7 +675,7 @@ func InvokePipe(hook string, src io.Reader) ([]byte, error) {
 	if e, ok := err.(*os.PathError); ok && e.Err == syscall.EPIPE {
 		LogWithFields(logf).Errorf(e.Error())
 	} else if err != nil {
-		LogWithFields(logf).Errorf("failed to write STDIN: cmd( %s ), error( %s )", hook, err.Error())
+		LogWithFields(logf).Errorf("failed to write STDIN of %s. %s", hook, err.Error())
 	}
 	stdin.Close()
 
