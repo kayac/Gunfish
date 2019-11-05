@@ -38,13 +38,15 @@ type Config struct {
 
 // SectionProvider is Gunfish provider configuration
 type SectionProvider struct {
-	WorkerNum        int `toml:"worker_num"`
-	QueueSize        int `toml:"queue_size"`
-	RequestQueueSize int `toml:"max_request_size"`
-	Port             int `toml:"port"`
-	DebugPort        int
-	MaxConnections   int    `toml:"max_connections"`
-	ErrorHook        string `toml:"error_hook"`
+	WorkerNum                  int `toml:"worker_num"`
+	QueueSize                  int `toml:"queue_size"`
+	RequestQueueSize           int `toml:"max_request_size"`
+	Port                       int `toml:"port"`
+	DebugPort                  int
+	MaxConnections             int    `toml:"max_connections"`
+	ErrorHook                  string `toml:"error_hook"`
+	ErrorHookTo                string `toml:"error_hook_to"`
+	ErrorHookCommandPersistent bool   `toml:"error_hook_command_persistent"`
 }
 
 // SectionApns is the configure which is loaded from gunfish.toml
