@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"os"
 	"time"
 
 	goconf "github.com/kayac/go-config"
@@ -34,6 +35,7 @@ type Config struct {
 	Apns     SectionApns     `toml:"apns"`
 	Provider SectionProvider `toml:"provider"`
 	FCM      SectionFCM      `toml:"fcm"`
+	FCMv1    SectionFCMv1    `toml:"fcm_v1"`
 }
 
 // SectionProvider is Gunfish provider configuration
@@ -62,6 +64,12 @@ type SectionApns struct {
 type SectionFCM struct {
 	APIKey  string `toml:"api_key"`
 	Enabled bool
+}
+
+// SectionFCMv1 is the configuration of fcm/v1
+type SectionFCMv1 struct {
+	GoogleApplicationCredentials string `toml:"google_application_credentials"`
+	Enabled                      bool
 }
 
 // DefaultLoadConfig loads default /etc/gunfish.toml
@@ -114,6 +122,12 @@ func (c *Config) validateConfig() error {
 			return err
 		}
 	}
+	if c.FCMv1.GoogleApplicationCredentials != "" {
+		c.FCMv1.Enabled = true
+		if err := c.validateConfigFCMv1(); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -138,6 +152,11 @@ func (c *Config) validateConfigProvider() error {
 
 func (c *Config) validateConfigFCM() error {
 	return nil
+}
+
+func (c *Config) validateConfigFCMv1() error {
+	_, err := os.Stat(c.FCMv1.GoogleApplicationCredentials)
+	return err
 }
 
 func (c *Config) validateConfigAPNs() error {

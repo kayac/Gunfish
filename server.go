@@ -15,10 +15,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/fukata/golang-stats-api-handler"
+	stats_api "github.com/fukata/golang-stats-api-handler"
 	"github.com/kayac/Gunfish/apns"
 	"github.com/kayac/Gunfish/config"
 	"github.com/kayac/Gunfish/fcm"
+	"github.com/kayac/Gunfish/fcmv1"
 	"github.com/lestrrat-go/server-starter/listener"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/netutil"
@@ -147,6 +148,12 @@ func StartServer(conf config.Config, env Environment) {
 			"type": "provider",
 		}).Infof("Enable endpoint /push/fcm")
 		mux.HandleFunc("/push/fcm", prov.PushFCMHandler())
+	}
+	if conf.FCMv1.Enabled {
+		LogWithFields(logrus.Fields{
+			"type": "provider",
+		}).Infof("Enable endpoint /push/fcm/v1")
+		mux.HandleFunc("/push/fcm/v1", prov.PushFCMv1Handler())
 	}
 	mux.HandleFunc("/stats/app", prov.StatsHandler())
 	mux.HandleFunc("/stats/profile", stats_api.Handler)
@@ -278,6 +285,54 @@ func (prov *Provider) PushFCMHandler() http.HandlerFunc {
 
 		// create request for fcm
 		var payload fcm.Payload
+		dec := json.NewDecoder(req.Body)
+		if err := dec.Decode(&payload); err != nil {
+			logrus.Warnf("Internal Server Error: %s", err)
+			res.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(res, "{\"reason\":\"%s\"}", err.Error())
+			return
+		}
+		grs := []Request{
+			Request{
+				Notification: payload,
+				Tries:        0,
+			},
+		}
+
+		// enqueues one request into supervisor's queue.
+		if err := prov.Sup.EnqueueClientRequest(&grs); err != nil {
+			setRetryAfter(res, req, err.Error())
+			return
+		}
+
+		// success
+		res.WriteHeader(http.StatusOK)
+		fmt.Fprint(res, "{\"result\": \"ok\"}")
+	})
+}
+
+func (prov *Provider) PushFCMv1Handler() http.HandlerFunc {
+	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		atomic.AddInt64(&(srvStats.RequestCount), 1)
+
+		// Method Not Alllowed
+		if err := validateMethod(res, req); err != nil {
+			logrus.Warn(err)
+			return
+		}
+
+		// only Content-Type application/json
+		c := req.Header.Get("Content-Type")
+		if c != ApplicationJSON {
+			// Unsupported Media Type
+			logrus.Warnf("Unsupported Media Type: %s", c)
+			res.WriteHeader(http.StatusUnsupportedMediaType)
+			fmt.Fprintf(res, `{"reason":"Unsupported Media Type"}`)
+			return
+		}
+
+		// create request for fcm
+		var payload fcmv1.Payload
 		dec := json.NewDecoder(req.Body)
 		if err := dec.Decode(&payload); err != nil {
 			logrus.Warnf("Internal Server Error: %s", err)
