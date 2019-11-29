@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
 	"net"
 	"net/http"
@@ -147,13 +148,13 @@ func StartServer(conf config.Config, env Environment) {
 		LogWithFields(logrus.Fields{
 			"type": "provider",
 		}).Infof("Enable endpoint /push/fcm")
-		mux.HandleFunc("/push/fcm", prov.PushFCMHandler())
+		mux.HandleFunc("/push/fcm", prov.PushFCMHandler(false))
 	}
 	if conf.FCMv1.Enabled {
 		LogWithFields(logrus.Fields{
 			"type": "provider",
 		}).Infof("Enable endpoint /push/fcm/v1")
-		mux.HandleFunc("/push/fcm/v1", prov.PushFCMv1Handler())
+		mux.HandleFunc("/push/fcm/v1", prov.PushFCMHandler(true))
 	}
 	mux.HandleFunc("/stats/app", prov.StatsHandler())
 	mux.HandleFunc("/stats/profile", stats_api.Handler)
@@ -263,7 +264,7 @@ func (prov *Provider) PushAPNsHandler() http.HandlerFunc {
 	})
 }
 
-func (prov *Provider) PushFCMHandler() http.HandlerFunc {
+func (prov *Provider) PushFCMHandler(v1 bool) http.HandlerFunc {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		atomic.AddInt64(&(srvStats.RequestCount), 1)
 
@@ -284,19 +285,12 @@ func (prov *Provider) PushFCMHandler() http.HandlerFunc {
 		}
 
 		// create request for fcm
-		var payload fcm.Payload
-		dec := json.NewDecoder(req.Body)
-		if err := dec.Decode(&payload); err != nil {
-			logrus.Warnf("Internal Server Error: %s", err)
-			res.WriteHeader(http.StatusInternalServerError)
+		grs, err := newFCMRequests(req.Body, v1)
+		if err != nil {
+			logrus.Warnf("bad request: %s", err)
+			res.WriteHeader(http.StatusBadRequest)
 			fmt.Fprintf(res, "{\"reason\":\"%s\"}", err.Error())
 			return
-		}
-		grs := []Request{
-			Request{
-				Notification: payload,
-				Tries:        0,
-			},
 		}
 
 		// enqueues one request into supervisor's queue.
@@ -311,52 +305,28 @@ func (prov *Provider) PushFCMHandler() http.HandlerFunc {
 	})
 }
 
-func (prov *Provider) PushFCMv1Handler() http.HandlerFunc {
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		atomic.AddInt64(&(srvStats.RequestCount), 1)
-
-		// Method Not Alllowed
-		if err := validateMethod(res, req); err != nil {
-			logrus.Warn(err)
-			return
-		}
-
-		// only Content-Type application/json
-		c := req.Header.Get("Content-Type")
-		if c != ApplicationJSON {
-			// Unsupported Media Type
-			logrus.Warnf("Unsupported Media Type: %s", c)
-			res.WriteHeader(http.StatusUnsupportedMediaType)
-			fmt.Fprintf(res, `{"reason":"Unsupported Media Type"}`)
-			return
-		}
-
-		// create request for fcm
+func newFCMRequests(src io.Reader, v1 bool) ([]Request, error) {
+	dec := json.NewDecoder(src)
+	reqs := []Request{
+		Request{
+			Tries: 0,
+		},
+	}
+	if v1 {
 		var payload fcmv1.Payload
-		dec := json.NewDecoder(req.Body)
 		if err := dec.Decode(&payload); err != nil {
-			logrus.Warnf("Internal Server Error: %s", err)
-			res.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(res, "{\"reason\":\"%s\"}", err.Error())
-			return
+			return nil, err
 		}
-		grs := []Request{
-			Request{
-				Notification: payload,
-				Tries:        0,
-			},
+		reqs[0].Notification = payload
+		return reqs, nil
+	} else {
+		var payload fcm.Payload
+		if err := dec.Decode(&payload); err != nil {
+			return nil, err
 		}
-
-		// enqueues one request into supervisor's queue.
-		if err := prov.Sup.EnqueueClientRequest(&grs); err != nil {
-			setRetryAfter(res, req, err.Error())
-			return
-		}
-
-		// success
-		res.WriteHeader(http.StatusOK)
-		fmt.Fprint(res, "{\"result\": \"ok\"}")
-	})
+		reqs[0].Notification = payload
+		return reqs, nil
+	}
 }
 
 func validateMethod(res http.ResponseWriter, req *http.Request) error {
