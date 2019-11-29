@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"strconv"
 
-	"github.com/kayac/Gunfish"
+	gunfish "github.com/kayac/Gunfish"
 	"github.com/kayac/Gunfish/apns"
 	"github.com/kayac/Gunfish/config"
 	"github.com/sirupsen/logrus"
@@ -81,7 +81,7 @@ func main() {
 			}
 		}
 	default:
-		logrus.Error("Unknown environment: %s. Please look at help.", environment)
+		logrus.Errorf("Unknown environment: %s. Please look at help.", environment)
 		os.Exit(1)
 	}
 

@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.com/kayac/Gunfish"
+	"github.com/kayac/Gunfish/config"
 	"github.com/kayac/Gunfish/apns"
 )
 
@@ -14,7 +14,7 @@ func main() {
 	flag.StringVar(&confFile, "c", "./test/gunfish_test.toml", "config file")
 	flag.Parse()
 
-	config, err := gunfish.LoadConfig(confFile)
+	config, err := config.LoadConfig(confFile)
 	if err != nil {
 		return
 	}

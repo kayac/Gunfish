@@ -2,8 +2,9 @@ package fcm
 
 import (
 	"encoding/json"
-	"reflect"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestUnmarshalResponse(t *testing.T) {
@@ -12,8 +13,8 @@ func TestUnmarshalResponse(t *testing.T) {
 		t.Error(err)
 	}
 
-	if !reflect.DeepEqual(r, buildResponseBody()) {
-		t.Errorf("mismatch decoded payload:\ngot=%v\nexpected=%v", r, buildResponseBody())
+	if diff := cmp.Diff(r, buildResponseBody()); diff != "" {
+		t.Errorf("mismatch decoded payload diff: %s", diff)
 	}
 }
 

@@ -7,8 +7,8 @@ max_connections = 2000
 error_hook = "{{ env `TEST_GUNFISH_HOOK_CMD` `cat ` }}"
 
 [apns]
-key_file = "./test/server.key"
-cert_file = "./test/server.crt"
+key_file = "{{ env `PROJECT_ROOT` `.` }}/test/server.key"
+cert_file = "{{ env `PROJECT_ROOT` `.` }}/test/server.crt"
 sender_num = 50
 request_per_sec = 2000
 

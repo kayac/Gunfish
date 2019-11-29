@@ -5,6 +5,7 @@ go 1.12
 require (
 	firebase.google.com/go v3.10.0+incompatible
 	github.com/fukata/golang-stats-api-handler v1.0.0
+	github.com/google/go-cmp v0.3.1
 	github.com/kayac/go-config v0.0.2
 	github.com/lestrrat-go/server-starter v0.0.0-20181210024821-8564cc80d990
 	github.com/onsi/ginkgo v1.10.1 // indirect
