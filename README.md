@@ -78,9 +78,9 @@ Response example:
 
 ### POST /push/fcm
 
-To delivery remote notifications via FCM to user's devices.
+To delivery remote notifications via FCM (legacy) API to user's devices.
 
-Post body format is equal to it for FCM original server.
+Post body format is equal to it for FCM legacy origin server.
 
 example:
 ```json
@@ -105,6 +105,34 @@ Response example:
 {"result": "ok"}
 ```
 
+### POST /push/fcm/v1
+
+To delivery remote notifications via FCM v1 API to user's devices.
+
+Post body format is equal to it for FCM v1 origin server.
+
+example:
+```json
+{
+  "message": {
+    "notification": {
+      "title": "message_title",
+      "body": "message_body",
+      "image": "https://example.com/notification.png"
+    },
+    "data": {
+      "sample_key": "sample key",
+      "message": "sample message"
+    },
+    "token": "InstanceIDTokenForDevice"
+  }
+}
+```
+
+Response example:
+```json
+{"result": "ok"}
+```
 
 ### GET /stats/app
 
@@ -179,6 +207,9 @@ team_id = "team_id"
 
 [fcm]
 api_key = "API key for FCM"
+
+[fcm_v1]
+google_application_credentials = "/path/to/credentials.json"
 ```
 
 param            | status | description
@@ -222,37 +253,18 @@ for example JSON structure: (>= v0.2.x)
 }
 ```
 
-(~ v0.1.x)
-```json
+```json5
+// FCM v1
 {
-  "response": {
-    "apns-id": "",
-    "status": 400
-  },
-  "response_time": 0.633673848,
-  "request": {
-    "header": {},
-    "token": "9fe817acbcef8173fb134d8a80123cba243c8376af83db8caf310daab1f23003",
-    "payload": {
-      "aps": {
-        "alert": "error alert test",
-        "badge": 1,
-        "sound": "default"
-      },
-      "Optional": {
-        "option1": "hoge",
-        "option2": "hoge"
-      }
-    },
-    "tries": 0
-  },
-  "error_msg": {
-    "reason": "MissingTopic",
-    "timestamp": 0
+  "provider": "fcmv1",
+  "status": 400,
+  "token": "testToken",
+  "error": {
+    "status": "INVALID_ARGUMENT",
+    "message": "The registration token is not a valid FCM registration token"
   }
 }
 ```
-
 
 ## Graceful Restart
 Gunfish supports graceful restarting based on `Start Server`. So, you should start on `start_server` command if you want graceful to restart.
@@ -299,7 +311,6 @@ You can implement a success custom handler in the same way but a hook command is
 Requires [dep](https://github.com/golang/dep/) for vendoring.
 
 ```
-$ make get-deps
 $ make test
 ```
 
