@@ -9,17 +9,19 @@ const Provider = "fcmv1"
 
 // ResponseBody fcm response body
 type ResponseBody struct {
-	Name  string    `json:"name"`
-	Error *FCMError `json:"error"`
+	Name  string    `json:"name,omitempty"`
+	Error *FCMError `json:"error,omitempty"`
 }
 
 type FCMError struct {
-	Status  string `json:"status"`
-	Message string `json:"message"`
-	Details []struct {
-		Type      string `json:"@type"`
-		ErrorCode string `json:"errorCode"`
-	}
+	Status  string   `json:"status"`
+	Message string   `json:"message,omitempty"`
+	Details []Detail `json:"details,omitempty"`
+}
+
+type Detail struct {
+	Type      string `json:"@type"`
+	ErrorCode string `json:"errorCode,omitempty"`
 }
 
 // Result is the status of a processed FCMResponse
