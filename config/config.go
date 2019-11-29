@@ -11,6 +11,7 @@ import (
 
 	"github.com/kayac/Gunfish/fcmv1"
 	goconf "github.com/kayac/go-config"
+	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
@@ -107,7 +108,7 @@ func LoadConfig(fn string) (Config, error) {
 
 	// validates config parameters
 	if err := (&config).validateConfig(); err != nil {
-		return config, err
+		return config, errors.Wrap(err, "validate config failed")
 	}
 
 	return config, nil
@@ -115,24 +116,24 @@ func LoadConfig(fn string) (Config, error) {
 
 func (c *Config) validateConfig() error {
 	if err := c.validateConfigProvider(); err != nil {
-		return err
+		return errors.Wrap(err, "[provider]")
 	}
 	if (c.Apns.CertFile != "" && c.Apns.KeyFile != "") || (c.Apns.TeamID != "" && c.Apns.Kid != "") {
 		c.Apns.Enabled = true
 		if err := c.validateConfigAPNs(); err != nil {
-			return err
+			return errors.Wrap(err, "[apns]")
 		}
 	}
 	if c.FCM.APIKey != "" {
 		c.FCM.Enabled = true
 		if err := c.validateConfigFCM(); err != nil {
-			return err
+			return errors.Wrap(err, "[fcm]")
 		}
 	}
 	if c.FCMv1.GoogleApplicationCredentials != "" {
 		c.FCMv1.Enabled = true
 		if err := c.validateConfigFCMv1(); err != nil {
-			return err
+			return errors.Wrap(err, "[fcm_v1]")
 		}
 	}
 	return nil

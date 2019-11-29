@@ -10,7 +10,7 @@ require (
 	github.com/lestrrat-go/server-starter v0.0.0-20181210024821-8564cc80d990
 	github.com/onsi/ginkgo v1.10.1 // indirect
 	github.com/onsi/gomega v1.7.0 // indirect
-	github.com/pkg/errors v0.8.0 // indirect
+	github.com/pkg/errors v0.8.0
 	github.com/satori/go.uuid v1.1.0
 	github.com/sirupsen/logrus v1.0.3
 	github.com/stretchr/testify v1.4.0 // indirect
