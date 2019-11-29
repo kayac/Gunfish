@@ -181,7 +181,7 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 			}
 		}
 		if conf.FCMv1.Enabled {
-			fcv1, err = fcmv1.NewClient(conf.FCMv1.GoogleApplicationCredentials, nil, fcmv1.ClientTimeout)
+			fcv1, err = fcmv1.NewClient(conf.FCMv1.TokenSource, conf.FCMv1.ProjectID, nil, fcmv1.ClientTimeout)
 			if err != nil {
 				LogWithFields(logrus.Fields{
 					"type": "supervisor",

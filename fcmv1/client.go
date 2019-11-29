@@ -2,23 +2,20 @@ package fcmv1
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
+	"path"
 	"time"
 
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 )
 
 // fcm v1 Client const variables
 const (
-	DefaultFCMEndpointFmt = "https://fcm.googleapis.com/v1/projects/%s/messages:send"
-	Scope                 = "https://www.googleapis.com/auth/firebase.messaging"
-	ClientTimeout         = time.Second * 10
+	DefaultFCMEndpoint = "https://fcm.googleapis.com/v1/projects"
+	Scope              = "https://www.googleapis.com/auth/firebase.messaging"
+	ClientTimeout      = time.Second * 10
 )
 
 // Client is FCM v1 client
@@ -88,42 +85,24 @@ func (c *Client) NewRequest(p Payload) (*http.Request, error) {
 }
 
 // NewClient establishes a http connection with fcm v1
-func NewClient(serviceAccountFilepath string, endpoint *url.URL, timeout time.Duration) (*Client, error) {
-	b, err := ioutil.ReadFile(serviceAccountFilepath)
-	if err != nil {
-		return nil, err
-	}
-	serviceAccount := make(map[string]string)
-	if err := json.Unmarshal(b, &serviceAccount); err != nil {
-		return nil, err
-	}
-	projectID := serviceAccount["project_id"]
-	if projectID == "" {
-		return nil, fmt.Errorf("invalid service account json: %s project_id is not defined", serviceAccountFilepath)
-	}
-
-	conf, err := google.JWTConfigFromJSON(b, Scope)
-	if err != nil {
-		return nil, err
-	}
-
+func NewClient(tokenSource oauth2.TokenSource, projectID string, endpoint *url.URL, timeout time.Duration) (*Client, error) {
 	client := &http.Client{
 		Timeout: timeout,
 	}
-
 	c := &Client{
 		Client:      client,
-		tokenSource: conf.TokenSource(context.Background()),
+		tokenSource: tokenSource,
 	}
 
 	if endpoint != nil {
 		c.endpoint = endpoint
 	} else {
-		if ep, err := url.Parse(fmt.Sprintf(DefaultFCMEndpointFmt, projectID)); err != nil {
+		ep, err := url.Parse(DefaultFCMEndpoint)
+		if err != nil {
 			return nil, err
-		} else {
-			c.endpoint = ep
 		}
+		ep.Path = path.Join(ep.Path, projectID, "messages:send")
+		c.endpoint = ep
 	}
 
 	return c, nil

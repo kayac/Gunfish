@@ -1,13 +1,18 @@
 package config
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
-	"os"
+	"io/ioutil"
 	"time"
 
+	"github.com/kayac/Gunfish/fcmv1"
 	goconf "github.com/kayac/go-config"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 )
 
 // Limit values
@@ -70,6 +75,8 @@ type SectionFCM struct {
 type SectionFCMv1 struct {
 	GoogleApplicationCredentials string `toml:"google_application_credentials"`
 	Enabled                      bool
+	ProjectID                    string
+	TokenSource                  oauth2.TokenSource
 }
 
 // DefaultLoadConfig loads default /etc/gunfish.toml
@@ -155,7 +162,26 @@ func (c *Config) validateConfigFCM() error {
 }
 
 func (c *Config) validateConfigFCMv1() error {
-	_, err := os.Stat(c.FCMv1.GoogleApplicationCredentials)
+	b, err := ioutil.ReadFile(c.FCMv1.GoogleApplicationCredentials)
+	if err != nil {
+		return err
+	}
+	serviceAccount := make(map[string]string)
+	if err := json.Unmarshal(b, &serviceAccount); err != nil {
+		return err
+	}
+	if projectID := serviceAccount["project_id"]; projectID != "" {
+		c.FCMv1.ProjectID = projectID
+	} else {
+		return fmt.Errorf("invalid service account json: %s project_id is not defined", c.FCMv1.GoogleApplicationCredentials)
+	}
+
+	conf, err := google.JWTConfigFromJSON(b, fcmv1.Scope)
+	if err != nil {
+		return err
+	}
+	c.FCMv1.TokenSource = conf.TokenSource(context.Background())
+
 	return err
 }
 
