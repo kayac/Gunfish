@@ -54,17 +54,17 @@ func buildPayload() Payload {
 
 func buildPayloadJSON() string {
 	return `{
-		"message": {
-        	"notification": {
-            	"title": "message_title",
-				"body": "message_body",
-				"image": "https://example.com/notification.png"
-    	    },
-	        "data": {
-    	        "sample_key": "sample key",
-        	    "message":    "sample message"
-        	},
-			"token": "testToken"
-		}
-    }`
+  "message": {
+    "notification": {
+      "title": "message_title",
+      "body": "message_body",
+      "image": "https://example.com/notification.png"
+    },
+    "data": {
+      "sample_key": "sample key",
+      "message": "sample message"
+    },
+    "token": "testToken"
+  }
+}`
 }
