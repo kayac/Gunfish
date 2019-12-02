@@ -40,4 +40,4 @@ tools/%:
 	go build -gcflags="-trimpath=${HOME}" -ldflags="-w" test/tools/$*/$*.go
 
 release:
-	ghr ${TAG} pkg/
+	ghr -u kayac -r Gunfish -n $(GIT_VER) pkg/
