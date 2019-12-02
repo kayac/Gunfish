@@ -1,12 +1,19 @@
 package config
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"time"
 
+	"github.com/kayac/Gunfish/fcmv1"
 	goconf "github.com/kayac/go-config"
+	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 )
 
 // Limit values
@@ -34,6 +41,7 @@ type Config struct {
 	Apns     SectionApns     `toml:"apns"`
 	Provider SectionProvider `toml:"provider"`
 	FCM      SectionFCM      `toml:"fcm"`
+	FCMv1    SectionFCMv1    `toml:"fcm_v1"`
 }
 
 // SectionProvider is Gunfish provider configuration
@@ -64,6 +72,14 @@ type SectionFCM struct {
 	Enabled bool
 }
 
+// SectionFCMv1 is the configuration of fcm/v1
+type SectionFCMv1 struct {
+	GoogleApplicationCredentials string `toml:"google_application_credentials"`
+	Enabled                      bool
+	ProjectID                    string
+	TokenSource                  oauth2.TokenSource
+}
+
 // DefaultLoadConfig loads default /etc/gunfish.toml
 func DefaultLoadConfig() (Config, error) {
 	return LoadConfig("/etc/gunfish/gunfish.toml")
@@ -92,7 +108,7 @@ func LoadConfig(fn string) (Config, error) {
 
 	// validates config parameters
 	if err := (&config).validateConfig(); err != nil {
-		return config, err
+		return config, errors.Wrap(err, "validate config failed")
 	}
 
 	return config, nil
@@ -100,18 +116,24 @@ func LoadConfig(fn string) (Config, error) {
 
 func (c *Config) validateConfig() error {
 	if err := c.validateConfigProvider(); err != nil {
-		return err
+		return errors.Wrap(err, "[provider]")
 	}
 	if (c.Apns.CertFile != "" && c.Apns.KeyFile != "") || (c.Apns.TeamID != "" && c.Apns.Kid != "") {
 		c.Apns.Enabled = true
 		if err := c.validateConfigAPNs(); err != nil {
-			return err
+			return errors.Wrap(err, "[apns]")
 		}
 	}
 	if c.FCM.APIKey != "" {
 		c.FCM.Enabled = true
 		if err := c.validateConfigFCM(); err != nil {
-			return err
+			return errors.Wrap(err, "[fcm]")
+		}
+	}
+	if c.FCMv1.GoogleApplicationCredentials != "" {
+		c.FCMv1.Enabled = true
+		if err := c.validateConfigFCMv1(); err != nil {
+			return errors.Wrap(err, "[fcm_v1]")
 		}
 	}
 	return nil
@@ -138,6 +160,30 @@ func (c *Config) validateConfigProvider() error {
 
 func (c *Config) validateConfigFCM() error {
 	return nil
+}
+
+func (c *Config) validateConfigFCMv1() error {
+	b, err := ioutil.ReadFile(c.FCMv1.GoogleApplicationCredentials)
+	if err != nil {
+		return err
+	}
+	serviceAccount := make(map[string]string)
+	if err := json.Unmarshal(b, &serviceAccount); err != nil {
+		return err
+	}
+	if projectID := serviceAccount["project_id"]; projectID != "" {
+		c.FCMv1.ProjectID = projectID
+	} else {
+		return fmt.Errorf("invalid service account json: %s project_id is not defined", c.FCMv1.GoogleApplicationCredentials)
+	}
+
+	conf, err := google.JWTConfigFromJSON(b, fcmv1.Scope)
+	if err != nil {
+		return err
+	}
+	c.FCMv1.TokenSource = conf.TokenSource(context.Background())
+
+	return err
 }
 
 func (c *Config) validateConfigAPNs() error {

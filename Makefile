@@ -1,6 +1,7 @@
 GIT_VER:=$(shell git describe --tags)
 DATE:=$(shell date +%Y-%m-%dT%H:%M:%SZ)
 export GO111MODULE:=on
+export PROJECT_ROOT:=$(shell git rev-parse --show-toplevel)
 
 .PHONY: test install clean
 
@@ -25,9 +26,7 @@ gen-cert:
 	test/scripts/gen_test_cert.sh
 
 test: gen-cert
-	go test -v ./apns
-	go test -v ./fcm
-	go test -v .
+	go test -v ./...
 
 clean:
 	rm -f cmd/gunfish/gunfish

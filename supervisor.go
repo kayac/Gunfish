@@ -16,7 +16,8 @@ import (
 	"github.com/kayac/Gunfish/apns"
 	"github.com/kayac/Gunfish/config"
 	"github.com/kayac/Gunfish/fcm"
-	"github.com/satori/go.uuid"
+	"github.com/kayac/Gunfish/fcmv1"
+	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -35,6 +36,7 @@ type Supervisor struct {
 type Worker struct {
 	ac             *apns.Client
 	fc             *fcm.Client
+	fcv1           *fcmv1.Client
 	queue          chan Request
 	respq          chan SenderResponse
 	wgrp           *sync.WaitGroup
@@ -156,15 +158,16 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 	var err error
 	for i := 0; i < conf.Provider.WorkerNum; i++ {
 		var (
-			ac *apns.Client
-			fc *fcm.Client
+			ac   *apns.Client
+			fc   *fcm.Client
+			fcv1 *fcmv1.Client
 		)
 		if conf.Apns.Enabled {
 			ac, err = apns.NewClient(conf.Apns)
 			if err != nil {
 				LogWithFields(logrus.Fields{
 					"type": "supervisor",
-				}).Errorf("%s", err.Error())
+				}).Errorf("faile to new client for apns: %s", err.Error())
 				break
 			}
 		}
@@ -173,7 +176,16 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 			if err != nil {
 				LogWithFields(logrus.Fields{
 					"type": "supervisor",
-				}).Errorf("%s", err.Error())
+				}).Errorf("failed to new client for fcm: %s", err.Error())
+				break
+			}
+		}
+		if conf.FCMv1.Enabled {
+			fcv1, err = fcmv1.NewClient(conf.FCMv1.TokenSource, conf.FCMv1.ProjectID, nil, fcmv1.ClientTimeout)
+			if err != nil {
+				LogWithFields(logrus.Fields{
+					"type": "supervisor",
+				}).Errorf("failed to new client for fcmv1: %s", err.Error())
 				break
 			}
 		}
@@ -185,6 +197,7 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 			sn:    SenderNum,
 			ac:    ac,
 			fc:    fc,
+			fcv1:  fcv1,
 		}
 
 		s.workers = append(s.workers, &worker)
@@ -259,7 +272,7 @@ func (s *Supervisor) spawnWorker(w Worker, conf *config.Config) {
 		}).Debugf("Spawned a sender-%d-%d.", w.id, i)
 
 		// spawnSender
-		go spawnSender(w.queue, w.respq, w.wgrp, w.ac, w.fc)
+		go spawnSender(w.queue, w.respq, w.wgrp, w.ac, w.fc, w.fcv1)
 	}
 
 	func() {
@@ -312,8 +325,20 @@ func (w *Worker) receiveResponse(resp SenderResponse, retryq chan<- Request, cmd
 			"resp_uid":       resp.UID,
 		}
 		handleFCMResponse(resp, retryq, cmdq, logf)
+	case fcmv1.Payload:
+		p := req.Notification.(fcmv1.Payload)
+		logf := logrus.Fields{
+			"type":           "worker",
+			"token":          p.Message.Token,
+			"worker_id":      w.id,
+			"res_queue_size": len(w.respq),
+			"resend_cnt":     req.Tries,
+			"response_time":  resp.RespTime,
+			"resp_uid":       resp.UID,
+		}
+		handleFCMResponse(resp, retryq, cmdq, logf)
 	default:
-		LogWithFields(logrus.Fields{"type": "worker"}).Infof("Unknown request type:%s", t)
+		LogWithFields(logrus.Fields{"type": "worker"}).Infof("Unknown response type:%s", t)
 	}
 
 }
@@ -400,6 +425,9 @@ func handleFCMResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Com
 		case fcm.InvalidRegistration.String(), fcm.NotRegistered.String():
 			onResponse(result, errorResponseHandler.HookCmd(), cmdq)
 			LogWithFields(logf).Errorf("%s", err)
+		case fcmv1.Unregistered, fcmv1.InvalidArgument:
+			onResponse(result, errorResponseHandler.HookCmd(), cmdq)
+			LogWithFields(logf).Errorf("%s", err)
 		default:
 			LogWithFields(logf).Errorf("Unknown error message: %s", err)
 		}
@@ -423,7 +451,7 @@ func (w *Worker) receiveRequests(reqs *[]Request) {
 	}
 }
 
-func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.WaitGroup, ac *apns.Client, fc *fcm.Client) {
+func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.WaitGroup, ac *apns.Client, fc *fcm.Client, fcv1 *fcmv1.Client) {
 	defer wgrp.Done()
 	for req := range wq {
 		var sres SenderResponse
@@ -458,6 +486,27 @@ func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.Wait
 			p := req.Notification.(fcm.Payload)
 			start := time.Now()
 			results, err := fc.Send(p)
+			respTime := time.Now().Sub(start).Seconds()
+			rs := make([]Result, 0, len(results))
+			for _, v := range results {
+				rs = append(rs, v)
+			}
+			sres = SenderResponse{
+				Results:  rs,
+				RespTime: respTime,
+				Req:      req,
+				Err:      err,
+				UID:      uuid.NewV4().String(),
+			}
+		case fcmv1.Payload:
+			if fcv1 == nil {
+				LogWithFields(logrus.Fields{"type": "sender"}).
+					Errorf("fcmv1 client is not present")
+				continue
+			}
+			p := req.Notification.(fcmv1.Payload)
+			start := time.Now()
+			results, err := fcv1.Send(p)
 			respTime := time.Now().Sub(start).Seconds()
 			rs := make([]Result, 0, len(results))
 			for _, v := range results {
@@ -522,7 +571,7 @@ func onResponse(result Result, cmd string, cmdq chan<- Command) {
 	}
 	select {
 	case cmdq <- command:
-		LogWithFields(logf).Debugf("Enqueue command: %v", command)
+		LogWithFields(logf).Debugf("Enqueue command: %s < %s", command.command, string(b))
 	default:
 		LogWithFields(logf).Warnf("Command queue is full, so could not execute commnad: %v", command)
 	}
