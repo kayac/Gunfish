@@ -25,7 +25,6 @@ jobs:
   docker:
     machine: true
     steps:
-      - setup_remote_docker
       - checkout
       - run: |
           export TAG=$(echo $GITHUB_REF | cut -d/ -f3)
