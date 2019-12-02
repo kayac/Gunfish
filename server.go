@@ -163,7 +163,7 @@ func StartServer(conf config.Config, env Environment) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		if err := srv.Serve(llis); err != nil {
+		if err := srv.Serve(llis); err != nil && err != http.ErrServerClosed {
 			LogWithFields(logrus.Fields{}).Error(err)
 		}
 		wg.Done()
