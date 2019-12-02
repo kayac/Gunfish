@@ -29,7 +29,7 @@ jobs:
       - checkout
       - run: |
           export TAG=$(echo $GITHUB_REF | cut -d/ -f3)
-          echo $DOCKER_TOKEN | docker login -u kayac --password-stdin
+          echo $DOCKER_TOKEN | docker login -u fujiwara --password-stdin
           cd docker
           docker build --build-arg version=$TAG -t kayac/gunfish:$TAG .
           docker push kayac/gunfish:$TAG
