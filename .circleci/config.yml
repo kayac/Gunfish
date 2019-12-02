@@ -22,12 +22,12 @@ jobs:
             CGO_ENABLED: 0
       - run: |
           make release
-    docker:
-      machine: true
-      steps:
-        - setup_remote_docker
-        - checkout
-        - run: |
+  docker:
+    machine: true
+    steps:
+      - setup_remote_docker
+      - checkout
+      - run: |
           export TAG=$(echo $GITHUB_REF | cut -d/ -f3)
           echo $DOCKER_TOKEN | docker login -u kayac --password-stdin
           cd docker
