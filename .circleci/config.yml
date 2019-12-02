@@ -46,6 +46,8 @@ workflows:
             branches:
               ignore: /.*/
       - docker:
+          requires:
+            - release
           filters:
             tags:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+.*$/
