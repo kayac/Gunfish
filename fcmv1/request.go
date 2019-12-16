@@ -8,3 +8,6 @@ import (
 type Payload struct {
 	Message messaging.Message `json:"message"`
 }
+
+// MaxBulkRequests represens max count of request payloads in a request body.
+const MaxBulkRequests = 500

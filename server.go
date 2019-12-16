@@ -3,6 +3,7 @@ package gunfish
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -307,24 +308,32 @@ func (prov *Provider) PushFCMHandler(v1 bool) http.HandlerFunc {
 
 func newFCMRequests(src io.Reader, v1 bool) ([]Request, error) {
 	dec := json.NewDecoder(src)
-	reqs := []Request{
-		Request{
-			Tries: 0,
-		},
-	}
+	reqs := []Request{}
 	if v1 {
-		var payload fcmv1.Payload
-		if err := dec.Decode(&payload); err != nil {
-			return nil, err
+		count := 0
+	PAYLOADS:
+		for {
+			var payload fcmv1.Payload
+			if err := dec.Decode(&payload); err != nil {
+				if err == io.EOF {
+					break PAYLOADS
+				} else {
+					return nil, err
+				}
+			}
+			count++
+			if count >= fcmv1.MaxBulkRequests {
+				return nil, errors.New("Too many requests")
+			}
+			reqs = append(reqs, Request{Notification: payload, Tries: 0})
 		}
-		reqs[0].Notification = payload
 		return reqs, nil
 	} else {
 		var payload fcm.Payload
 		if err := dec.Decode(&payload); err != nil {
 			return nil, err
 		}
-		reqs[0].Notification = payload
+		reqs = append(reqs, Request{Notification: payload, Tries: 0})
 		return reqs, nil
 	}
 }
