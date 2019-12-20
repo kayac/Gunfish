@@ -134,6 +134,8 @@ Response example:
 {"result": "ok"}
 ```
 
+FCM v1 endpoint allows multiple payloads in a single request body. You can build request body simply concat multiple JSON payloads. Gunfish sends for each that payloads to FCM server. Limitation: Max count of payloads in a request body is 500.
+
 ### GET /stats/app
 
 ```json

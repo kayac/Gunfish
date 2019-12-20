@@ -99,7 +99,7 @@ func TestEnqueuRequestToSupervisor(t *testing.T) {
 	for range []int{0, 1, 2, 3, 4, 5, 6} {
 		sup.EnqueueClientRequest(&reqs)
 	}
-	time.Sleep(time.Millisecond * 500)
+	time.Sleep(time.Millisecond * 1000)
 	wg.Wait()
 	if g, w := str.Get("success"), 70; g != w {
 		t.Errorf("not match success count: got %d want %d", g, w)
