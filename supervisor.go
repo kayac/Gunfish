@@ -425,7 +425,7 @@ func handleFCMResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Com
 		case fcm.InvalidRegistration.String(), fcm.NotRegistered.String():
 			onResponse(result, errorResponseHandler.HookCmd(), cmdq)
 			LogWithFields(logf).Errorf("%s", err)
-		case fcmv1.Unregistered, fcmv1.InvalidArgument:
+		case fcmv1.Unregistered, fcmv1.InvalidArgument, fcmv1.NotFound:
 			onResponse(result, errorResponseHandler.HookCmd(), cmdq)
 			LogWithFields(logf).Errorf("%s", err)
 		default:
