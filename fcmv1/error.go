@@ -8,6 +8,7 @@ type FCMErrorResponseCode int
 const (
 	InvalidArgument = "INVALID_ARGUMENT"
 	Unregistered    = "UNREGISTERED"
+	NotFound        = "NOT_FOUND"
 )
 
 type Error struct {
