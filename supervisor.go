@@ -192,7 +192,7 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 		worker := Worker{
 			id:    i,
 			queue: make(chan Request, wqSize),
-			respq: make(chan SenderResponse, wqSize),
+			respq: make(chan SenderResponse, wqSize*100),
 			wgrp:  &sync.WaitGroup{},
 			sn:    SenderNum,
 			ac:    ac,
