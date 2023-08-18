@@ -189,7 +189,7 @@ See detail properties that url: (https://github.com/fukata/golang-stats-api-hand
 
 ## Configuration
 The Gunfish configuration file is a TOML file that Gunfish server uses to configure itself.
-That configuration file should be located `/etc/gunfish.toml`, and is required to start.
+That configuration file should be located at `/etc/gunfish.toml`, and is required to start.
 Here is an example configuration:
 
 ```toml
