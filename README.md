@@ -4,7 +4,7 @@
 
 APNs and FCM provider server on HTTP/2.
 
-* Gunfish provides the nterface as the APNs / FCM provider server.
+* Gunfish provides the interface as the APNs / FCM provider server.
 
 ## Overview
 
