@@ -75,7 +75,7 @@ func StartServer(conf config.Config, env Environment) {
 		"type": "provider",
 	}).Infof("Size of POST request queue is %d", conf.Provider.QueueSize)
 
-	// Set APNS host addr according of environment
+	// Set APNS host addr according to environment
 	if env == Production {
 		conf.Apns.Host = ProdServer
 	} else if env == Development {
