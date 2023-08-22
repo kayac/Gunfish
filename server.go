@@ -129,8 +129,8 @@ func StartServer(conf config.Config, env Environment) {
 		lis = listeners[0]
 	}
 
-	// If many connections establishs between Gunfish provider and your application,
-	// Gunfish provider would be overload, and decrease performance.
+	// If many connections are established between Gunfish provider and your application,
+	// Gunfish provider would be overloaded, and decrease in performance.
 	llis := netutil.LimitListener(lis, conf.Provider.MaxConnections)
 
 	// Start Gunfish provider
