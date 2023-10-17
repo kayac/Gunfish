@@ -47,7 +47,7 @@ docker-push:
 				--build-arg VERSION=${GIT_VER} \
 				--platform linux/amd64,linux/arm64 \
 				-f docker/Dockerfile \
-				-t katsubushi/katsubushi:${GIT_VER} \
+				-t kayac/gunfish:${GIT_VER} \
 				-t ghcr.io/kayac/gunfish:${GIT_VER} \
 				--push \
 				.
