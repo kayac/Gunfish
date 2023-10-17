@@ -31,23 +31,23 @@ build:
 tools/%:
 	go build -gcflags="-trimpath=${HOME}" -ldflags="-w" test/tools/$*/$*.go
 
-docker: clean packages
+docker-build: # clean packages
 		mv dist/Gunfish_linux_amd64_v1 dist/Gunfish_linux_amd64
 		docker buildx build \
-				--build-arg VERSION=v${GIT_VER} \
+				--build-arg VERSION=${GIT_VER} \
 				--platform linux/amd64,linux/arm64 \
 				-f docker/Dockerfile \
-				-t kayac/gunfish:v${GIT_VER} \
-				-t ghcr.io/kayac/gunfish:v${GIT_VER} \
+				-t kayac/gunfish:${GIT_VER} \
+				-t ghcr.io/kayac/gunfish:${GIT_VER} \
 				.
 
 docker-push:
 		mv dist/Gunfish_linux_amd64_v1 dist/Gunfish_linux_amd64
 		docker buildx build \
-				--build-arg VERSION=v${GIT_VER} \
+				--build-arg VERSION=${GIT_VER} \
 				--platform linux/amd64,linux/arm64 \
 				-f docker/Dockerfile \
-				-t katsubushi/katsubushi:v${GIT_VER} \
-				-t ghcr.io/kayac/gunfish:v${GIT_VER} \
+				-t katsubushi/katsubushi:${GIT_VER} \
+				-t ghcr.io/kayac/gunfish:${GIT_VER} \
 				--push \
 				.
