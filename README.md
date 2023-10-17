@@ -14,10 +14,28 @@ APNs and FCM provider server on HTTP/2.
 
 [Gunfish slides (jp)](http://slides.com/takuyayoshimura-tkyshm/deck/fullscreen)
 
+## Install
+
+### Binary
+
+Download the latest binary from [releases](https://github.com/kayac/Gunfish/releases)
+
+### Docker images
+
+[DockerHub](https://hub.docker.com/r/kayac/gunfish/)
+
+[GitHub Packages](https://github.com/kayac/Gunfish/pkgs/container/gunfish)
+
+### Homebrew
+
+```console
+$ brew tap kayac/tap
+$ brew install gunfish
+```
+
 ## Quick Started
 
 ```bash
-$ go get github.com/kayac/Gunfish/cmd/gunfish
 $ gunfish -c ./config/gunfish.toml -E production
 ```
 
