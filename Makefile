@@ -8,19 +8,8 @@ export PROJECT_ROOT:=$(shell git rev-parse --show-toplevel)
 all: test
 
 install:
-	 cd cmd/gunfish && go build -ldflags "-X main.version=${GIT_VER} -X main.buildDate=${DATE}"
+	cd cmd/gunfish && go build -ldflags "-X main.version=${GIT_VER} -X main.buildDate=${DATE}"
 		install cmd/gunfish/gunfish ${GOPATH}/bin
-
-packages:
-	cd cmd/gunfish \
-		&& CGO_ENABLED=0 gox \
-			-os="linux darwin" \
-			-arch="amd64" \
-			-output "../../pkg/{{.Dir}}-${GIT_VER}-{{.OS}}-{{.Arch}}" \
-			-gcflags "-trimpath=${GOPATH}" \
-			-ldflags "-w -X main.version=${GIT_VER} -X main.buildDate=${DATE} -extldflags \"-static\"" \
-			-tags "netgo"
-	cd pkg && find . -name "*${GIT_VER}*" -type f -exec zip {}.zip {} \;
 
 gen-cert:
 	test/scripts/gen_test_cert.sh
@@ -31,7 +20,10 @@ test: gen-cert
 clean:
 	rm -f cmd/gunfish/gunfish
 	rm -f test/server.*
-	rm -f pkg/*
+	rm -f dist/*
+
+packages:
+	goreleaser build --skip-validate --rm-dist
 
 build:
 	go build -gcflags="-trimpath=${HOME}" -ldflags="-w" cmd/gunfish/gunfish.go
@@ -39,5 +31,23 @@ build:
 tools/%:
 	go build -gcflags="-trimpath=${HOME}" -ldflags="-w" test/tools/$*/$*.go
 
-release:
-	ghr -u kayac -r Gunfish -n $(GIT_VER) $(GIT_VER) pkg/
+docker: clean packages
+		mv dist/Gunfish_linux_amd64_v1 dist/Gunfish_linux_amd64
+		docker buildx build \
+				--build-arg VERSION=v${GIT_VER} \
+				--platform linux/amd64,linux/arm64 \
+				-f docker/Dockerfile \
+				-t kayac/gunfish:v${GIT_VER} \
+				-t ghcr.io/kayac/gunfish:v${GIT_VER} \
+				.
+
+docker-push:
+		mv dist/Gunfish_linux_amd64_v1 dist/Gunfish_linux_amd64
+		docker buildx build \
+				--build-arg VERSION=v${GIT_VER} \
+				--platform linux/amd64,linux/arm64 \
+				-f docker/Dockerfile \
+				-t katsubushi/katsubushi:v${GIT_VER} \
+				-t ghcr.io/kayac/gunfish:v${GIT_VER} \
+				--push \
+				.
