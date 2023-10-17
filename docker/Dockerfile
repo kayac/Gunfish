@@ -3,7 +3,7 @@ LABEL maintainer "FUJIWARA Shunichiro <fujiwara.shunichiro@gmail.com>"
 
 ARG VERSION
 ARG TARGETARCH
-ADD dist/Gunfish_linux_${TARGETARCH}/gunfish /usr/local/bin/gunifish
+ADD dist/Gunfish_linux_${TARGETARCH}/gunfish /usr/local/bin/gunfish
 EXPOSE 8003
 WORKDIR /opt/gunfish
 
