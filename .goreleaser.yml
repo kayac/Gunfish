@@ -1,0 +1,32 @@
+# This is an example goreleaser.yaml file with some sane defaults.
+# Make sure to check the documentation at http://goreleaser.com
+before:
+  hooks:
+    - go mod download
+builds:
+  - env:
+      - CGO_ENABLED=0
+    main: ./cmd/gunfish/
+    binary: gunfish
+    ldflags:
+      - -s -w
+      - -X main.version=v{{.Version}}
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+archives:
+  - name_template: "{{.ProjectName}}_v{{.Version}}_{{.Os}}_{{.Arch}}"
+
+release:
+  prerelease: "true"
+checksum:
+  name_template: "checksums.txt"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"

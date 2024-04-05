@@ -1,16 +1,10 @@
-FROM alpine:3.9
+FROM alpine:3.18
 LABEL maintainer "FUJIWARA Shunichiro <fujiwara.shunichiro@gmail.com>"
 
-ARG version
-
-RUN apk --no-cache add unzip curl && \
-    mkdir -p /etc/gunfish /opt/gunfish && \
-    curl -sL https://github.com/kayac/Gunfish/releases/download/${version}/gunfish-${version}-linux-amd64.zip > /tmp/gunfish-${version}-linux-amd64.zip && \
-    cd /tmp && \
-    unzip gunfish-${version}-linux-amd64.zip && \
-    install gunfish-${version}-linux-amd64 /usr/bin/gunfish && \
-    rm -f /tmp/gunfish*
-
+ARG VERSION
+ARG TARGETARCH
+ADD dist/Gunfish_linux_${TARGETARCH}/gunfish /usr/local/bin/gunfish
+EXPOSE 8003
 WORKDIR /opt/gunfish
 
-ENTRYPOINT ["/usr/bin/gunfish"]
+ENTRYPOINT ["/usr/local/bin/gunfish"]
