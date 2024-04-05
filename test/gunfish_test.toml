@@ -1,16 +1,13 @@
 [provider]
-port = 38103
-worker_num = 8
-queue_size = 200
-max_request_size = 1000
-max_connections = 2000
 error_hook = "{{ env `TEST_GUNFISH_HOOK_CMD` `cat ` }}"
+max_connections = 2000
+max_request_size = 1000
+port = 38103
+queue_size = 200
+worker_num = 8
 
 [apns]
-key_file = "{{ env `PROJECT_ROOT` `.` }}/test/server.key"
 cert_file = "{{ env `PROJECT_ROOT` `.` }}/test/server.crt"
-sender_num = 50
+key_file = "{{ env `PROJECT_ROOT` `.` }}/test/server.key"
 request_per_sec = 2000
-
-[fcm]
-api_key = 'fcm_test_api_key'
+sender_num = 50

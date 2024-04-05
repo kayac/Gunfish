@@ -6,7 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -91,7 +91,7 @@ func run() error {
 			fmt.Println(string(out))
 		}
 
-		out, err := ioutil.ReadFile(jsonFile)
+		out, err := os.ReadFile(jsonFile)
 		if err != nil {
 			return err
 		}
@@ -115,7 +115,7 @@ func run() error {
 	}
 	defer resp.Body.Close()
 
-	out, err := ioutil.ReadAll(resp.Body)
+	out, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}

@@ -6,7 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/kayac/Gunfish/fcmv1"
@@ -125,10 +125,7 @@ func (c *Config) validateConfig() error {
 		}
 	}
 	if c.FCM.APIKey != "" {
-		c.FCM.Enabled = true
-		if err := c.validateConfigFCM(); err != nil {
-			return errors.Wrap(err, "[fcm]")
-		}
+		return errors.New("[fcm] legacy is not supported anymore. Please use [fcm_v1]")
 	}
 	if c.FCMv1.GoogleApplicationCredentials != "" {
 		c.FCMv1.Enabled = true
@@ -158,12 +155,8 @@ func (c *Config) validateConfigProvider() error {
 	return nil
 }
 
-func (c *Config) validateConfigFCM() error {
-	return nil
-}
-
 func (c *Config) validateConfigFCMv1() error {
-	b, err := ioutil.ReadFile(c.FCMv1.GoogleApplicationCredentials)
+	b, err := os.ReadFile(c.FCMv1.GoogleApplicationCredentials)
 	if err != nil {
 		return err
 	}
