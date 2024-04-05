@@ -9,6 +9,9 @@ const (
 	InvalidArgument = "INVALID_ARGUMENT"
 	Unregistered    = "UNREGISTERED"
 	NotFound        = "NOT_FOUND"
+	Internal        = "INTERNAL"
+	Unavailable     = "UNAVAILABLE"
+	QuotaExceeded   = "QUOTA_EXCEEDED"
 )
 
 type Error struct {

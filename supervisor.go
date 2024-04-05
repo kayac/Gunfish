@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"os/exec"
 	"sync"
@@ -110,15 +111,18 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 				for cnt := 0; cnt < RetryOnceCount; cnt++ {
 					select {
 					case req := <-s.retryq:
-						reqs := &[]Request{req}
-						select {
-						case s.queue <- reqs:
-							LogWithFields(logrus.Fields{"type": "retry", "resend_cnt": req.Tries}).
-								Debugf("Enqueue to retry to send notification.")
-						default:
-							LogWithFields(logrus.Fields{"type": "retry"}).
-								Infof("Could not retry to enqueue because the supervisor queue is full.")
-						}
+						delay := time.Duration(math.Pow(float64(req.Tries), 2)) * 100 * time.Millisecond
+						time.AfterFunc(delay, func() {
+							reqs := &[]Request{req}
+							select {
+							case s.queue <- reqs:
+								LogWithFields(logrus.Fields{"delay": delay, "type": "retry", "resend_cnt": req.Tries}).
+									Debugf("Enqueue to retry to send notification.")
+							default:
+								LogWithFields(logrus.Fields{"delay": delay, "type": "retry"}).
+									Infof("Could not retry to enqueue because the supervisor queue is full.")
+							}
+						})
 					default:
 					}
 				}
@@ -363,23 +367,7 @@ func handleFCMResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Com
 	if resp.Err != nil {
 		req := resp.Req
 		LogWithFields(logf).Warnf("response is nil. reason: %s", resp.Err.Error())
-		if req.Tries < SendRetryCount {
-			req.Tries++
-			atomic.AddInt64(&(srvStats.RetryCount), 1)
-			logf["resend_cnt"] = req.Tries
-
-			select {
-			case retryq <- req:
-				LogWithFields(logf).
-					Debugf("Retry to enqueue into retryq because of http connection error with FCM.")
-			default:
-				LogWithFields(logf).
-					Warnf("Supervisor retry queue is full.")
-			}
-		} else {
-			LogWithFields(logf).
-				Warnf("Retry count is over than %d. Could not deliver notification.", SendRetryCount)
-		}
+		retry(retryq, req, resp.Err, logf)
 		return
 	}
 
@@ -391,12 +379,17 @@ func handleFCMResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Com
 			LogWithFields(logf).Info("Succeeded to send a notification")
 			continue
 		}
-		// handle error response each registration_id
-		atomic.AddInt64(&(srvStats.ErrCount), 1)
 		switch err.Error() {
+		case fcmv1.Internal, fcmv1.Unavailable:
+			LogWithFields(logf).Warn("retrying:", err)
+			retry(retryq, resp.Req, err, logf)
+		case fcmv1.QuotaExceeded:
+			LogWithFields(logf).Warn("retrying after 1 min:", err)
+			time.AfterFunc(time.Minute, func() { retry(retryq, resp.Req, err, logf) })
 		case fcmv1.Unregistered, fcmv1.InvalidArgument, fcmv1.NotFound:
+			LogWithFields(logf).Errorf("calling error hook: %s", err)
+			atomic.AddInt64(&(srvStats.ErrCount), 1)
 			onResponse(result, errorResponseHandler.HookCmd(), cmdq)
-			LogWithFields(logf).Errorf("%s", err)
 		default:
 			LogWithFields(logf).Errorf("Unknown error message: %s", err)
 		}

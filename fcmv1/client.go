@@ -46,14 +46,14 @@ func (c *Client) Send(p Payload) ([]Result, error) {
 
 	if body.Error == nil && body.Name != "" {
 		return []Result{
-			Result{
+			{
 				StatusCode: res.StatusCode,
 				Token:      p.Message.Token,
 			},
 		}, nil
 	} else if body.Error != nil {
 		return []Result{
-			Result{
+			{
 				StatusCode: res.StatusCode,
 				Token:      p.Message.Token,
 				Error:      body.Error,
@@ -70,15 +70,21 @@ func (c *Client) NewRequest(p Payload) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	token, err := c.tokenSource.Token()
-	if err != nil {
-		return nil, err
+	var bearer string
+	if ts := c.tokenSource; ts != nil {
+		token, err := c.tokenSource.Token()
+		if err != nil {
+			return nil, err
+		}
+		bearer = token.AccessToken
+	} else {
+		bearer = p.Message.Token
 	}
 	req, err := http.NewRequest("POST", c.endpoint.String(), bytes.NewReader(data))
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+	req.Header.Set("Authorization", "Bearer "+bearer)
 	req.Header.Set("Content-Type", "application/json")
 
 	return req, nil
