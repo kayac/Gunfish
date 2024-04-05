@@ -11,3 +11,9 @@ cert_file = "{{ env `PROJECT_ROOT` `.` }}/test/server.crt"
 key_file = "{{ env `PROJECT_ROOT` `.` }}/test/server.key"
 request_per_sec = 2000
 sender_num = 50
+
+[fcm_v1]
+# google_application_credentials = "{{ env `PROJECT_ROOT` `.` }}/credentials.json"
+enabled = true
+endpoint = "http://localhost:8888/v1/projects"
+projectid = "test"

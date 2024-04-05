@@ -85,7 +85,7 @@ func (c *Client) NewRequest(p Payload) (*http.Request, error) {
 }
 
 // NewClient establishes a http connection with fcm v1
-func NewClient(tokenSource oauth2.TokenSource, projectID string, endpoint *url.URL, timeout time.Duration) (*Client, error) {
+func NewClient(tokenSource oauth2.TokenSource, projectID string, endpoint string, timeout time.Duration) (*Client, error) {
 	client := &http.Client{
 		Timeout: timeout,
 	}
@@ -94,16 +94,15 @@ func NewClient(tokenSource oauth2.TokenSource, projectID string, endpoint *url.U
 		tokenSource: tokenSource,
 	}
 
-	if endpoint != nil {
-		c.endpoint = endpoint
-	} else {
-		ep, err := url.Parse(DefaultFCMEndpoint)
-		if err != nil {
-			return nil, err
-		}
-		ep.Path = path.Join(ep.Path, projectID, "messages:send")
-		c.endpoint = ep
+	if endpoint == "" {
+		endpoint = DefaultFCMEndpoint
 	}
+	ep, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	ep.Path = path.Join(ep.Path, projectID, "messages:send")
+	c.endpoint = ep
 
 	return c, nil
 }

@@ -78,6 +78,7 @@ type SectionFCMv1 struct {
 	Enabled                      bool
 	ProjectID                    string
 	TokenSource                  oauth2.TokenSource
+	Endpoint                     string
 }
 
 // DefaultLoadConfig loads default /etc/gunfish.toml
