@@ -20,7 +20,6 @@ import (
 	stats_api "github.com/fukata/golang-stats-api-handler"
 	"github.com/kayac/Gunfish/apns"
 	"github.com/kayac/Gunfish/config"
-	"github.com/kayac/Gunfish/fcm"
 	"github.com/kayac/Gunfish/fcmv1"
 	"github.com/lestrrat-go/server-starter/listener"
 	"github.com/sirupsen/logrus"
@@ -146,16 +145,13 @@ func StartServer(conf config.Config, env Environment) {
 		mux.HandleFunc("/push/apns", prov.PushAPNsHandler())
 	}
 	if conf.FCM.Enabled {
-		LogWithFields(logrus.Fields{
-			"type": "provider",
-		}).Infof("Enable endpoint /push/fcm")
-		mux.HandleFunc("/push/fcm", prov.PushFCMHandler(false))
+		panic("FCM legacy is not supported")
 	}
 	if conf.FCMv1.Enabled {
 		LogWithFields(logrus.Fields{
 			"type": "provider",
 		}).Infof("Enable endpoint /push/fcm/v1")
-		mux.HandleFunc("/push/fcm/v1", prov.PushFCMHandler(true))
+		mux.HandleFunc("/push/fcm/v1", prov.PushFCMHandler())
 	}
 	mux.HandleFunc("/stats/app", prov.StatsHandler())
 	mux.HandleFunc("/stats/profile", stats_api.Handler)
@@ -265,7 +261,7 @@ func (prov *Provider) PushAPNsHandler() http.HandlerFunc {
 	})
 }
 
-func (prov *Provider) PushFCMHandler(v1 bool) http.HandlerFunc {
+func (prov *Provider) PushFCMHandler() http.HandlerFunc {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		atomic.AddInt64(&(srvStats.RequestCount), 1)
 
@@ -286,7 +282,7 @@ func (prov *Provider) PushFCMHandler(v1 bool) http.HandlerFunc {
 		}
 
 		// create request for fcm
-		grs, err := newFCMRequests(req.Body, v1)
+		grs, err := newFCMRequests(req.Body)
 		if err != nil {
 			logrus.Warnf("bad request: %s", err)
 			res.WriteHeader(http.StatusBadRequest)
@@ -306,36 +302,27 @@ func (prov *Provider) PushFCMHandler(v1 bool) http.HandlerFunc {
 	})
 }
 
-func newFCMRequests(src io.Reader, v1 bool) ([]Request, error) {
+func newFCMRequests(src io.Reader) ([]Request, error) {
 	dec := json.NewDecoder(src)
 	reqs := []Request{}
-	if v1 {
-		count := 0
-	PAYLOADS:
-		for {
-			var payload fcmv1.Payload
-			if err := dec.Decode(&payload); err != nil {
-				if err == io.EOF {
-					break PAYLOADS
-				} else {
-					return nil, err
-				}
-			}
-			count++
-			if count >= fcmv1.MaxBulkRequests {
-				return nil, errors.New("Too many requests")
-			}
-			reqs = append(reqs, Request{Notification: payload, Tries: 0})
-		}
-		return reqs, nil
-	} else {
-		var payload fcm.Payload
+	count := 0
+PAYLOADS:
+	for {
+		var payload fcmv1.Payload
 		if err := dec.Decode(&payload); err != nil {
-			return nil, err
+			if err == io.EOF {
+				break PAYLOADS
+			} else {
+				return nil, err
+			}
+		}
+		count++
+		if count >= fcmv1.MaxBulkRequests {
+			return nil, errors.New("Too many requests")
 		}
 		reqs = append(reqs, Request{Notification: payload, Tries: 0})
-		return reqs, nil
 	}
+	return reqs, nil
 }
 
 func validateMethod(res http.ResponseWriter, req *http.Request) error {

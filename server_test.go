@@ -96,7 +96,7 @@ func TestSuccessToPostJson(t *testing.T) {
 func TestFailedToPostInvalidJson(t *testing.T) {
 	sup, _ := gunfish.StartSupervisor(&conf)
 	prov := &gunfish.Provider{Sup: sup}
-	handler := prov.PushFCMHandler(false)
+	handler := prov.PushFCMHandler()
 
 	// missing `}`
 	invalidJson := []byte(`{"registration_ids": ["xxxxxxxxx"], "data": {"message":"test"`)

@@ -15,7 +15,6 @@ import (
 
 	"github.com/kayac/Gunfish/apns"
 	"github.com/kayac/Gunfish/config"
-	"github.com/kayac/Gunfish/fcm"
 	"github.com/kayac/Gunfish/fcmv1"
 	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
@@ -35,7 +34,6 @@ type Supervisor struct {
 // Worker sends notification to apns.
 type Worker struct {
 	ac             *apns.Client
-	fc             *fcm.Client
 	fcv1           *fcmv1.Client
 	queue          chan Request
 	respq          chan SenderResponse
@@ -159,7 +157,6 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 	for i := 0; i < conf.Provider.WorkerNum; i++ {
 		var (
 			ac   *apns.Client
-			fc   *fcm.Client
 			fcv1 *fcmv1.Client
 		)
 		if conf.Apns.Enabled {
@@ -172,13 +169,7 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 			}
 		}
 		if conf.FCM.Enabled {
-			fc, err = fcm.NewClient(conf.FCM.APIKey, nil, fcm.ClientTimeout)
-			if err != nil {
-				LogWithFields(logrus.Fields{
-					"type": "supervisor",
-				}).Errorf("failed to new client for fcm: %s", err.Error())
-				break
-			}
+			return Supervisor{}, errors.New("FCM legacy is not supported")
 		}
 		if conf.FCMv1.Enabled {
 			fcv1, err = fcmv1.NewClient(conf.FCMv1.TokenSource, conf.FCMv1.ProjectID, nil, fcmv1.ClientTimeout)
@@ -196,7 +187,6 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 			wgrp:  &sync.WaitGroup{},
 			sn:    SenderNum,
 			ac:    ac,
-			fc:    fc,
 			fcv1:  fcv1,
 		}
 
@@ -272,7 +262,7 @@ func (s *Supervisor) spawnWorker(w Worker, conf *config.Config) {
 		}).Debugf("Spawned a sender-%d-%d.", w.id, i)
 
 		// spawnSender
-		go spawnSender(w.queue, w.respq, w.wgrp, w.ac, w.fc, w.fcv1)
+		go spawnSender(w.queue, w.respq, w.wgrp, w.ac, w.fcv1)
 	}
 
 	func() {
@@ -311,20 +301,6 @@ func (w *Worker) receiveResponse(resp SenderResponse, retryq chan<- Request, cmd
 			"resp_uid":       resp.UID,
 		}
 		handleAPNsResponse(resp, retryq, cmdq, logf)
-	case fcm.Payload:
-		p := req.Notification.(fcm.Payload)
-		logf := logrus.Fields{
-			"type":           "worker",
-			"reg_ids_length": len(p.RegistrationIDs),
-			"notification":   p.Notification,
-			"data":           p.Data,
-			"worker_id":      w.id,
-			"res_queue_size": len(w.respq),
-			"resend_cnt":     req.Tries,
-			"response_time":  resp.RespTime,
-			"resp_uid":       resp.UID,
-		}
-		handleFCMResponse(resp, retryq, cmdq, logf)
 	case fcmv1.Payload:
 		p := req.Notification.(fcmv1.Payload)
 		logf := logrus.Fields{
@@ -422,9 +398,6 @@ func handleFCMResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Com
 		// handle error response each registration_id
 		atomic.AddInt64(&(srvStats.ErrCount), 1)
 		switch err.Error() {
-		case fcm.InvalidRegistration.String(), fcm.NotRegistered.String():
-			onResponse(result, errorResponseHandler.HookCmd(), cmdq)
-			LogWithFields(logf).Errorf("%s", err)
 		case fcmv1.Unregistered, fcmv1.InvalidArgument, fcmv1.NotFound:
 			onResponse(result, errorResponseHandler.HookCmd(), cmdq)
 			LogWithFields(logf).Errorf("%s", err)
@@ -451,7 +424,7 @@ func (w *Worker) receiveRequests(reqs *[]Request) {
 	}
 }
 
-func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.WaitGroup, ac *apns.Client, fc *fcm.Client, fcv1 *fcmv1.Client) {
+func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.WaitGroup, ac *apns.Client, fcv1 *fcmv1.Client) {
 	defer wgrp.Done()
 	for req := range wq {
 		var sres SenderResponse
@@ -474,27 +447,6 @@ func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.Wait
 				Results:  rs,
 				RespTime: respTime,
 				Req:      req, // Must copy
-				Err:      err,
-				UID:      uuid.NewV4().String(),
-			}
-		case fcm.Payload:
-			if fc == nil {
-				LogWithFields(logrus.Fields{"type": "sender"}).
-					Errorf("fcm client is not present")
-				continue
-			}
-			p := req.Notification.(fcm.Payload)
-			start := time.Now()
-			results, err := fc.Send(p)
-			respTime := time.Now().Sub(start).Seconds()
-			rs := make([]Result, 0, len(results))
-			for _, v := range results {
-				rs = append(rs, v)
-			}
-			sres = SenderResponse{
-				Results:  rs,
-				RespTime: respTime,
-				Req:      req,
 				Err:      err,
 				UID:      uuid.NewV4().String(),
 			}
