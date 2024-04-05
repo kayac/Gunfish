@@ -125,10 +125,7 @@ func (c *Config) validateConfig() error {
 		}
 	}
 	if c.FCM.APIKey != "" {
-		c.FCM.Enabled = true
-		if err := c.validateConfigFCM(); err != nil {
-			return errors.Wrap(err, "[fcm]")
-		}
+		return errors.New("[fcm] legacy is not supported anymore. Please use [fcm_v1]")
 	}
 	if c.FCMv1.GoogleApplicationCredentials != "" {
 		c.FCMv1.Enabled = true
