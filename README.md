@@ -202,26 +202,43 @@ cert_file = "/path/to/server.crt"
 kid = "kid"
 team_id = "team_id"
 
-[fcm]
-api_key = "API key for FCM"
-
 [fcm_v1]
 google_application_credentials = "/path/to/credentials.json"
 ```
 
-param            | status | description
+### [provider] section
+
+This section is for Gunfish server configuration.
+
+Parameter        | Requirement | Description
 ---------------- | ------ | --------------------------------------------------------------------------------------
 port             |optional| Listen port number.
 worker_num       |optional| Number of Gunfish owns http clients.
 queue_size       |optional| Limit number of posted JSON from the developer application.
 max_request_size |optional| Limit size of Posted JSON array.
 max_connections  |optional| Max connections
+error_hook       |optional| Error hook command. This command runs when Gunfish catches an error response.
+
+### [apns] section
+
+This section is for APNs provider configuration.
+If you don't need to APNs provider, you can skip this section.
+
+Parameter        | Requirement | Description
+---------------- | ------ | --------------------------------------------------------------------------------------
 key_file         |required| The key file path.
 cert_file        |optional| The cert file path.
 kid              |optional| kid for APNs provider authentication token.
 team_id          |optional| team id for APNs provider authentication token.
-error_hook       |optional| Error hook command. This command runs when Gunfish catches an error response.
-api_key          |optional| FCM api key. If you want to delivery notifications to android, it is required.
+
+### [fcm_v1] section
+
+This section is for FCM v1 provider configuration.
+If you don't need to FCM v1 provider, you can skip this section.
+
+Parameter        | Requirement | Description
+---------------- | ------ | --------------------------------------------------------------------------------------
+google_application_credentials |required| The path to the Google Cloud Platform service account key file.
 
 ## Error Hook
 
@@ -236,17 +253,6 @@ for example JSON structure: (>= v0.2.x)
   "status": 400,
   "token": "9fe817acbcef8173fb134d8a80123cba243c8376af83db8caf310daab1f23003",
   "reason": "MissingTopic"
-}
-```
-
-```json5
-// FCM
-{
-  "provider": "fcm",
-  "status": 200,
-  "registration_id": "8kMSTcfqrca:APA91bEfS-uC1WV374Mg83Lkn43..",
-  // or "to": "8kMSTcfqrca:APA91bEfS-uC1WV374Mg83Lkn43..",
-  "error": "InvalidRegistration"
 }
 ```
 
