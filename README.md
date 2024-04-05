@@ -280,38 +280,7 @@ $ go get github.com/lestrrat/go-server-starter/cmd/start_server
 $ start_server --port 38003 --pid-file gunfish.pid -- ./gunfish -c conf/gunfish.toml
 ```
 
-## Customize
-
-### How to Implement Response Handlers
-
-If you have to handle something on error or on success, you should implement error or success handlers.
-For example handlers you should implement is given below:
-
-```go
-type CustomYourErrorHandler struct {
-    hookCmd string
-}
-
-func (ch CustomYourErrorHandler) OnResponse(result Result){
-    // ...
-}
-
-func (ch CustomYourErrorHandler) HookCmd( ) string {
-    return ch.hookCmd
-}
-```
-
-Then you can use these handlers to set before to start gunfish server `( gunfish.StartServer( Config, Environment ) )`.
-
-```go
-InitErrorResponseHandler(CustomYourErrorHandler{hookCmd: "echo 'on error!'"})
-```
-
-You can implement a success custom handler in the same way but a hook command is not executed in the success handler in order not to make cpu resource too tight.
-
 ### Test
-
-Requires [dep](https://github.com/golang/dep/) for vendoring.
 
 ```
 $ make test
@@ -338,6 +307,7 @@ $ ./apnsmock -cert-file ./test/server.crt -key-file ./test/server.key -verbose
 ```
 
 ### Benchmark
+
 Gunfish repository includes Lua script for the benchmark. You can use wrk command with `err_and_success.lua` script.
 
 ```
