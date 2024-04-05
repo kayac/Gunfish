@@ -5,9 +5,9 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/kayac/Gunfish/config"
@@ -151,12 +151,12 @@ func NewClient(conf config.SectionApns) (*Client, error) {
 	useAuthToken := conf.Kid != "" && conf.TeamID != ""
 	tr := &http.Transport{}
 	if !useAuthToken {
-		certPEMBlock, err := ioutil.ReadFile(conf.CertFile)
+		certPEMBlock, err := os.ReadFile(conf.CertFile)
 		if err != nil {
 			return nil, err
 		}
 
-		keyPEMBlock, err := ioutil.ReadFile(conf.KeyFile)
+		keyPEMBlock, err := os.ReadFile(conf.KeyFile)
 		if err != nil {
 			return nil, err
 		}
@@ -172,7 +172,7 @@ func NewClient(conf config.SectionApns) (*Client, error) {
 		return nil, err
 	}
 
-	key, err := ioutil.ReadFile(conf.KeyFile)
+	key, err := os.ReadFile(conf.KeyFile)
 	if err != nil {
 		return nil, err
 	}
