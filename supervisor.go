@@ -111,7 +111,10 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 				for cnt := 0; cnt < RetryOnceCount; cnt++ {
 					select {
 					case req := <-s.retryq:
-						delay := time.Duration(math.Pow(float64(req.Tries), 2)) * 100 * time.Millisecond
+						var delay time.Duration
+						if RetryBackoff {
+							delay = time.Duration(math.Pow(float64(req.Tries), 2)) * 100 * time.Millisecond
+						}
 						time.AfterFunc(delay, func() {
 							reqs := &[]Request{req}
 							select {
