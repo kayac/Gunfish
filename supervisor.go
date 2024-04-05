@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"os/exec"
 	"sync"
@@ -33,15 +32,13 @@ type Supervisor struct {
 
 // Worker sends notification to apns.
 type Worker struct {
-	ac             *apns.Client
-	fcv1           *fcmv1.Client
-	queue          chan Request
-	respq          chan SenderResponse
-	wgrp           *sync.WaitGroup
-	sn             int
-	id             int
-	errorHandler   func(Request, *http.Response, error)
-	successHandler func(Request, *http.Response)
+	ac    *apns.Client
+	fcv1  *fcmv1.Client
+	queue chan Request
+	respq chan SenderResponse
+	wgrp  *sync.WaitGroup
+	sn    int
+	id    int
 }
 
 // SenderResponse is responses to worker from sender.
@@ -123,7 +120,6 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 								Infof("Could not retry to enqueue because the supervisor queue is full.")
 						}
 					default:
-						break
 					}
 				}
 			case <-s.exit:
@@ -438,7 +434,7 @@ func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.Wait
 			no := req.Notification.(apns.Notification)
 			start := time.Now()
 			results, err := ac.Send(no)
-			respTime := time.Now().Sub(start).Seconds()
+			respTime := time.Since(start).Seconds()
 			rs := make([]Result, 0, len(results))
 			for _, v := range results {
 				rs = append(rs, v)
@@ -459,7 +455,7 @@ func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.Wait
 			p := req.Notification.(fcmv1.Payload)
 			start := time.Now()
 			results, err := fcv1.Send(p)
-			respTime := time.Now().Sub(start).Seconds()
+			respTime := time.Since(start).Seconds()
 			rs := make([]Result, 0, len(results))
 			for _, v := range results {
 				rs = append(rs, v)
