@@ -94,34 +94,11 @@ Response example:
 {"result": "ok"}
 ```
 
-### POST /push/fcm
+### POST /push/fcm **Deprecated**
 
-To delivery remote notifications via FCM (legacy) API to user's devices.
+This API has been deleted at v0.6.0. Use `/push/fcm/v1` instead.
 
-Post body format is equal to it for FCM legacy origin server.
-
-example:
-```json
-{
-  "registration_ids": [
-    "token1",
-    "token2"
-  ],
-  "data": {
-    "id": "2",
-    "message": "Test2"
-  },
-  "notification": {
-    "title": "message_title",
-    "body": "message_body"
-  }
-}
-```
-
-Response example:
-```json
-{"result": "ok"}
-```
+See also https://firebase.google.com/docs/cloud-messaging/migrate-v1 .
 
 ### POST /push/fcm/v1
 

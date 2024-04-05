@@ -53,9 +53,9 @@ func TestInvalidCertification(t *testing.T) {
 	c, _ := config.LoadConfig("./test/gunfish_test.toml")
 	c.Apns.CertFile = "./test/invalid.crt"
 	c.Apns.KeyFile = "./test/invalid.key"
-	ss, err := gunfish.StartSupervisor(&c)
+	_, err := gunfish.StartSupervisor(&c)
 	if err != nil {
-		t.Errorf("Expected supervisor cannot start because of using invalid certification files.: %v", ss)
+		t.Errorf("Expected supervisor cannot start %s", err)
 	}
 }
 
