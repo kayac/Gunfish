@@ -192,7 +192,7 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 
 		s.workers = append(s.workers, &worker)
 		s.wgrp.Add(1)
-		go s.spawnWorker(worker, conf)
+		go s.spawnWorker(worker)
 		LogWithFields(logrus.Fields{
 			"type":      "worker",
 			"worker_id": i,
@@ -245,7 +245,7 @@ func (s *Supervisor) Shutdown() {
 	}).Infoln("Stoped supervisor.")
 }
 
-func (s *Supervisor) spawnWorker(w Worker, conf *config.Config) {
+func (s *Supervisor) spawnWorker(w Worker) {
 	atomic.AddInt64(&(srvStats.Workers), 1)
 	defer func() {
 		atomic.AddInt64(&(srvStats.Workers), -1)
