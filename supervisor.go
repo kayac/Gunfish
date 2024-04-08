@@ -394,6 +394,7 @@ func handleFCMResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Com
 			atomic.AddInt64(&(srvStats.ErrCount), 1)
 			onResponse(result, errorResponseHandler.HookCmd(), cmdq)
 		default:
+			atomic.AddInt64(&(srvStats.ErrCount), 1)
 			LogWithFields(logf).Errorf("Unknown error message: %s", err)
 		}
 	}
