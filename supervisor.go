@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
+	"math"
 	"os"
 	"os/exec"
 	"sync"
@@ -33,15 +33,13 @@ type Supervisor struct {
 
 // Worker sends notification to apns.
 type Worker struct {
-	ac             *apns.Client
-	fcv1           *fcmv1.Client
-	queue          chan Request
-	respq          chan SenderResponse
-	wgrp           *sync.WaitGroup
-	sn             int
-	id             int
-	errorHandler   func(Request, *http.Response, error)
-	successHandler func(Request, *http.Response)
+	ac    *apns.Client
+	fcv1  *fcmv1.Client
+	queue chan Request
+	respq chan SenderResponse
+	wgrp  *sync.WaitGroup
+	sn    int
+	id    int
 }
 
 // SenderResponse is responses to worker from sender.
@@ -113,17 +111,22 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 				for cnt := 0; cnt < RetryOnceCount; cnt++ {
 					select {
 					case req := <-s.retryq:
-						reqs := &[]Request{req}
-						select {
-						case s.queue <- reqs:
-							LogWithFields(logrus.Fields{"type": "retry", "resend_cnt": req.Tries}).
-								Debugf("Enqueue to retry to send notification.")
-						default:
-							LogWithFields(logrus.Fields{"type": "retry"}).
-								Infof("Could not retry to enqueue because the supervisor queue is full.")
+						var delay time.Duration
+						if RetryBackoff {
+							delay = time.Duration(math.Pow(float64(req.Tries), 2)) * 100 * time.Millisecond
 						}
+						time.AfterFunc(delay, func() {
+							reqs := &[]Request{req}
+							select {
+							case s.queue <- reqs:
+								LogWithFields(logrus.Fields{"delay": delay, "type": "retry", "resend_cnt": req.Tries}).
+									Debugf("Enqueue to retry to send notification.")
+							default:
+								LogWithFields(logrus.Fields{"delay": delay, "type": "retry"}).
+									Infof("Could not retry to enqueue because the supervisor queue is full.")
+							}
+						})
 					default:
-						break
 					}
 				}
 			case <-s.exit:
@@ -172,7 +175,7 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 			return Supervisor{}, errors.New("FCM legacy is not supported")
 		}
 		if conf.FCMv1.Enabled {
-			fcv1, err = fcmv1.NewClient(conf.FCMv1.TokenSource, conf.FCMv1.ProjectID, nil, fcmv1.ClientTimeout)
+			fcv1, err = fcmv1.NewClient(conf.FCMv1.TokenSource, conf.FCMv1.ProjectID, conf.FCMv1.Endpoint, fcmv1.ClientTimeout)
 			if err != nil {
 				LogWithFields(logrus.Fields{
 					"type": "supervisor",
@@ -192,7 +195,7 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 
 		s.workers = append(s.workers, &worker)
 		s.wgrp.Add(1)
-		go s.spawnWorker(worker, conf)
+		go s.spawnWorker(worker)
 		LogWithFields(logrus.Fields{
 			"type":      "worker",
 			"worker_id": i,
@@ -245,7 +248,7 @@ func (s *Supervisor) Shutdown() {
 	}).Infoln("Stoped supervisor.")
 }
 
-func (s *Supervisor) spawnWorker(w Worker, conf *config.Config) {
+func (s *Supervisor) spawnWorker(w Worker) {
 	atomic.AddInt64(&(srvStats.Workers), 1)
 	defer func() {
 		atomic.AddInt64(&(srvStats.Workers), -1)
@@ -367,23 +370,7 @@ func handleFCMResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Com
 	if resp.Err != nil {
 		req := resp.Req
 		LogWithFields(logf).Warnf("response is nil. reason: %s", resp.Err.Error())
-		if req.Tries < SendRetryCount {
-			req.Tries++
-			atomic.AddInt64(&(srvStats.RetryCount), 1)
-			logf["resend_cnt"] = req.Tries
-
-			select {
-			case retryq <- req:
-				LogWithFields(logf).
-					Debugf("Retry to enqueue into retryq because of http connection error with FCM.")
-			default:
-				LogWithFields(logf).
-					Warnf("Supervisor retry queue is full.")
-			}
-		} else {
-			LogWithFields(logf).
-				Warnf("Retry count is over than %d. Could not deliver notification.", SendRetryCount)
-		}
+		retry(retryq, req, resp.Err, logf)
 		return
 	}
 
@@ -395,12 +382,17 @@ func handleFCMResponse(resp SenderResponse, retryq chan<- Request, cmdq chan Com
 			LogWithFields(logf).Info("Succeeded to send a notification")
 			continue
 		}
-		// handle error response each registration_id
-		atomic.AddInt64(&(srvStats.ErrCount), 1)
 		switch err.Error() {
+		case fcmv1.Internal, fcmv1.Unavailable:
+			LogWithFields(logf).Warn("retrying:", err)
+			retry(retryq, resp.Req, err, logf)
+		case fcmv1.QuotaExceeded:
+			LogWithFields(logf).Warn("retrying after 1 min:", err)
+			time.AfterFunc(time.Minute, func() { retry(retryq, resp.Req, err, logf) })
 		case fcmv1.Unregistered, fcmv1.InvalidArgument, fcmv1.NotFound:
+			LogWithFields(logf).Errorf("calling error hook: %s", err)
+			atomic.AddInt64(&(srvStats.ErrCount), 1)
 			onResponse(result, errorResponseHandler.HookCmd(), cmdq)
-			LogWithFields(logf).Errorf("%s", err)
 		default:
 			LogWithFields(logf).Errorf("Unknown error message: %s", err)
 		}
@@ -438,7 +430,7 @@ func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.Wait
 			no := req.Notification.(apns.Notification)
 			start := time.Now()
 			results, err := ac.Send(no)
-			respTime := time.Now().Sub(start).Seconds()
+			respTime := time.Since(start).Seconds()
 			rs := make([]Result, 0, len(results))
 			for _, v := range results {
 				rs = append(rs, v)
@@ -459,7 +451,7 @@ func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.Wait
 			p := req.Notification.(fcmv1.Payload)
 			start := time.Now()
 			results, err := fcv1.Send(p)
-			respTime := time.Now().Sub(start).Seconds()
+			respTime := time.Since(start).Seconds()
 			rs := make([]Result, 0, len(results))
 			for _, v := range results {
 				rs = append(rs, v)

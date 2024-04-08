@@ -46,14 +46,14 @@ func (c *Client) Send(p Payload) ([]Result, error) {
 
 	if body.Error == nil && body.Name != "" {
 		return []Result{
-			Result{
+			{
 				StatusCode: res.StatusCode,
 				Token:      p.Message.Token,
 			},
 		}, nil
 	} else if body.Error != nil {
 		return []Result{
-			Result{
+			{
 				StatusCode: res.StatusCode,
 				Token:      p.Message.Token,
 				Error:      body.Error,
@@ -70,22 +70,28 @@ func (c *Client) NewRequest(p Payload) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	token, err := c.tokenSource.Token()
-	if err != nil {
-		return nil, err
+	var bearer string
+	if ts := c.tokenSource; ts != nil {
+		token, err := c.tokenSource.Token()
+		if err != nil {
+			return nil, err
+		}
+		bearer = token.AccessToken
+	} else {
+		bearer = p.Message.Token
 	}
 	req, err := http.NewRequest("POST", c.endpoint.String(), bytes.NewReader(data))
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+	req.Header.Set("Authorization", "Bearer "+bearer)
 	req.Header.Set("Content-Type", "application/json")
 
 	return req, nil
 }
 
 // NewClient establishes a http connection with fcm v1
-func NewClient(tokenSource oauth2.TokenSource, projectID string, endpoint *url.URL, timeout time.Duration) (*Client, error) {
+func NewClient(tokenSource oauth2.TokenSource, projectID string, endpoint string, timeout time.Duration) (*Client, error) {
 	client := &http.Client{
 		Timeout: timeout,
 	}
@@ -94,16 +100,15 @@ func NewClient(tokenSource oauth2.TokenSource, projectID string, endpoint *url.U
 		tokenSource: tokenSource,
 	}
 
-	if endpoint != nil {
-		c.endpoint = endpoint
-	} else {
-		ep, err := url.Parse(DefaultFCMEndpoint)
-		if err != nil {
-			return nil, err
-		}
-		ep.Path = path.Join(ep.Path, projectID, "messages:send")
-		c.endpoint = ep
+	if endpoint == "" {
+		endpoint = DefaultFCMEndpoint
 	}
+	ep, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	ep.Path = path.Join(ep.Path, projectID, "messages:send")
+	c.endpoint = ep
 
 	return c, nil
 }

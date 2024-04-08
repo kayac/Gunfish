@@ -78,3 +78,5 @@ var (
 	OutputHookStdout bool
 	OutputHookStderr bool
 )
+
+var RetryBackoff = true

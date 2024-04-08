@@ -58,6 +58,7 @@ func (tr TestResponseHandler) HookCmd() string {
 func init() {
 	logrus.SetLevel(logrus.WarnLevel)
 	conf.Apns.Host = gunfish.MockServer
+	gunfish.RetryBackoff = false // for testing
 }
 
 func TestEnqueuRequestToSupervisor(t *testing.T) {
