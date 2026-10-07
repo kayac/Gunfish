@@ -271,3 +271,22 @@ func TestSuccessOrFailureInvoke(t *testing.T) {
 		t.Errorf("hooks stderr must not be captured: %s", out)
 	}
 }
+
+func TestStartSupervisorWithSmallRequestSize(t *testing.T) {
+	for _, size := range []int{config.MinRequestSize, 133} {
+		t.Run(fmt.Sprintf("max_request_size=%d", size), func(t *testing.T) {
+			c := config.Config{
+				Provider: config.SectionProvider{
+					WorkerNum:        1,
+					QueueSize:        config.MinQueueSize,
+					RequestQueueSize: size,
+				},
+			}
+			sup, err := gunfish.StartSupervisor(&c)
+			if err != nil {
+				t.Fatal(err)
+			}
+			sup.Shutdown()
+		})
+	}
+}

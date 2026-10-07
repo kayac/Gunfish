@@ -217,7 +217,7 @@ Parameter        | Requirement | Description
 port             |optional| Listen port number.
 worker_num       |optional| Number of Gunfish owns http clients.
 queue_size       |optional| Limit number of posted JSON from the developer application.
-max_request_size |optional| Limit size of Posted JSON array.
+max_request_size |optional| Size of the retry queue for each worker (1-5000, default 2000). The retry queue size is `max_request_size * worker_num`. Note that the number of notifications in a POST request is limited to 5000 regardless of this parameter.
 max_connections  |optional| Max connections
 error_hook       |optional| Error hook command. This command runs when Gunfish catches an error response.
 
