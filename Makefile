@@ -1,21 +1,19 @@
 GIT_VER:=$(shell git describe --tags)
 DATE:=$(shell date +%Y-%m-%dT%H:%M:%SZ)
-export GO111MODULE:=on
 export PROJECT_ROOT:=$(shell git rev-parse --show-toplevel)
 
-.PHONY: test install clean
+.PHONY: test install clean packages build docker-prepare docker-build docker-push
 
 all: test
 
 install:
-	cd cmd/gunfish && go build -ldflags "-X main.version=${GIT_VER} -X main.buildDate=${DATE}"
-		install cmd/gunfish/gunfish ${GOPATH}/bin
+	go install -ldflags "-X main.version=${GIT_VER} -X main.buildDate=${DATE}" ./cmd/gunfish
 
 gen-cert:
 	test/scripts/gen_test_cert.sh
 
 test: gen-cert
-	go test -v ./...
+	go test -race -v ./...
 
 clean:
 	rm -f cmd/gunfish/gunfish
@@ -23,31 +21,33 @@ clean:
 	rm -f dist/*
 
 packages:
-	goreleaser build --skip-validate --rm-dist
+	goreleaser build --skip=validate --clean
 
 build:
-	go build -gcflags="-trimpath=${HOME}" -ldflags="-w" cmd/gunfish/gunfish.go
+	go build -trimpath -ldflags="-w" ./cmd/gunfish
 
 tools/%:
-	go build -gcflags="-trimpath=${HOME}" -ldflags="-w" test/tools/$*/$*.go
+	go build -trimpath -ldflags="-w" ./test/tools/$*
 
-docker-build: # clean packages
-		mv dist/Gunfish_linux_amd64_v1 dist/Gunfish_linux_amd64
-		docker buildx build \
-				--build-arg VERSION=${GIT_VER} \
-				--platform linux/amd64,linux/arm64 \
-				-f docker/Dockerfile \
-				-t kayac/gunfish:${GIT_VER} \
-				-t ghcr.io/kayac/gunfish:${GIT_VER} \
-				.
+# Copy binaries built by goreleaser to the paths referred by docker/Dockerfile.
+docker-prepare:
+	rm -rf dist/docker
+	install -D dist/Gunfish_linux_amd64_v1/gunfish dist/docker/linux/amd64/gunfish
+	install -D dist/Gunfish_linux_arm64_v8.0/gunfish dist/docker/linux/arm64/gunfish
 
-docker-push:
-		mv dist/Gunfish_linux_amd64_v1 dist/Gunfish_linux_amd64
-		docker buildx build \
-				--build-arg VERSION=${GIT_VER} \
-				--platform linux/amd64,linux/arm64 \
-				-f docker/Dockerfile \
-				-t kayac/gunfish:${GIT_VER} \
-				-t ghcr.io/kayac/gunfish:${GIT_VER} \
-				--push \
-				.
+docker-build: docker-prepare
+	docker buildx build \
+		--build-arg VERSION=${GIT_VER} \
+		--platform linux/amd64,linux/arm64 \
+		-f docker/Dockerfile \
+		-t ghcr.io/kayac/gunfish:${GIT_VER} \
+		.
+
+docker-push: docker-prepare
+	docker buildx build \
+		--build-arg VERSION=${GIT_VER} \
+		--platform linux/amd64,linux/arm64 \
+		-f docker/Dockerfile \
+		-t ghcr.io/kayac/gunfish:${GIT_VER} \
+		--push \
+		.

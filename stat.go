@@ -2,6 +2,7 @@ package gunfish
 
 import (
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/kayac/Gunfish/config"
@@ -39,13 +40,35 @@ func NewStats(conf config.Config) Stats {
 	}
 }
 
-// GetStats returns MemdStats of app
+// GetStats returns a snapshot of MemdStats of app.
+// Counters are updated by other goroutines, so they are read atomically.
 func (st *Stats) GetStats() *Stats {
-	preUptime := st.Uptime
-	st.Uptime = time.Now().Unix() - st.StartAt
-	st.Period = st.Uptime - preUptime
-	if !st.CertificateNotAfter.IsZero() {
-		st.CertificateExpireUntil = int64(st.CertificateNotAfter.Sub(time.Now()).Seconds())
+	uptime := time.Now().Unix() - st.StartAt
+	preUptime := atomic.SwapInt64(&st.Uptime, uptime)
+	period := uptime - preUptime
+	atomic.StoreInt64(&st.Period, period)
+
+	s := &Stats{
+		Pid:                  st.Pid,
+		DebugPort:            st.DebugPort,
+		Uptime:               uptime,
+		StartAt:              st.StartAt,
+		ServiceUnavailableAt: atomic.LoadInt64(&st.ServiceUnavailableAt),
+		Period:               period,
+		RetryAfter:           atomic.LoadInt64(&st.RetryAfter),
+		Workers:              atomic.LoadInt64(&st.Workers),
+		QueueSize:            atomic.LoadInt64(&st.QueueSize),
+		RetryQueueSize:       atomic.LoadInt64(&st.RetryQueueSize),
+		WorkersQueueSize:     atomic.LoadInt64(&st.WorkersQueueSize),
+		CommandQueueSize:     atomic.LoadInt64(&st.CommandQueueSize),
+		RetryCount:           atomic.LoadInt64(&st.RetryCount),
+		RequestCount:         atomic.LoadInt64(&st.RequestCount),
+		SentCount:            atomic.LoadInt64(&st.SentCount),
+		ErrCount:             atomic.LoadInt64(&st.ErrCount),
+		CertificateNotAfter:  st.CertificateNotAfter,
 	}
-	return st
+	if !st.CertificateNotAfter.IsZero() {
+		s.CertificateExpireUntil = int64(time.Until(st.CertificateNotAfter).Seconds())
+	}
+	return s
 }
