@@ -286,6 +286,8 @@ $ start_server --port 38003 --pid-file gunfish.pid -- ./gunfish -c conf/gunfish.
 $ make test
 ```
 
+`make test` includes an end-to-end test (`e2e/`), which builds the gunfish binary and runs it against APNs and FCM v1 mock servers. It requires `127.0.0.1:2195` to be available for the APNs mock server. Use `go test -short ./...` to skip it.
+
 The following tools are useful to send requests to gunfish for test the following.
 - gunfish-cli (send push notification to Gunfish for test)
 - apnsmock (APNs mock server)
