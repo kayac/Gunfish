@@ -10,8 +10,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"golang.org/x/net/http2"
 )
 
 const (
@@ -24,14 +22,8 @@ func StartAPNSMockServer(cert, key string) {
 	// Create TLSlistener
 	s := http.Server{}
 	s.Addr = ":2195"
-	http2.VerboseLogs = false
-	http2.ConfigureServer(&s, nil)
-	tlsConf := &tls.Config{}
-	if s.TLSConfig != nil {
-		tlsConf = s.TLSConfig.Clone()
-	}
-	if tlsConf.NextProtos == nil {
-		tlsConf.NextProtos = []string{"http/2.0"}
+	tlsConf := &tls.Config{
+		NextProtos: []string{"h2", "http/1.1"},
 	}
 
 	var err error

@@ -16,7 +16,6 @@ import (
 	"github.com/kayac/Gunfish/config"
 	"github.com/kayac/Gunfish/mock"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/http2"
 )
 
 func TestMain(m *testing.M) {
@@ -34,10 +33,7 @@ func TestMain(m *testing.M) {
 		logrus.SetLevel(logrus.WarnLevel)
 
 		ts := httptest.NewUnstartedServer(mock.APNsMockServer(false))
-		if err := http2.ConfigureServer(ts.Config, nil); err != nil {
-			return 1
-		}
-		ts.TLS = ts.Config.TLSConfig
+		ts.EnableHTTP2 = true
 		ts.StartTLS()
 		conf.Apns.Host = ts.URL
 

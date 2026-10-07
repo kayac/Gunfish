@@ -37,6 +37,7 @@ const apnsMockAddr = "127.0.0.1:2195"
 const fcmProjectID = "e2e"
 
 type received struct {
+	Proto  string
 	Path   string
 	Header http.Header
 	Body   any
@@ -59,7 +60,7 @@ func (r *recorder) wrap(next http.Handler) http.Handler {
 			body = string(b)
 		}
 		r.mu.Lock()
-		r.reqs = append(r.reqs, received{Path: req.URL.Path, Header: req.Header.Clone(), Body: body})
+		r.reqs = append(r.reqs, received{Proto: req.Proto, Path: req.URL.Path, Header: req.Header.Clone(), Body: body})
 		r.mu.Unlock()
 		req.Body = io.NopCloser(bytes.NewReader(b))
 		next.ServeHTTP(w, req)
@@ -206,6 +207,9 @@ projectid = "%s"
 	t.Run("apns requests", func(t *testing.T) {
 		got := map[string]any{}
 		for _, r := range apnsRec.snapshot() {
+			if r.Proto != "HTTP/2.0" {
+				t.Errorf("APNs request %s must be sent over HTTP/2, got %s", r.Path, r.Proto)
+			}
 			header := map[string]any{}
 			for _, k := range []string{"Apns-Topic", "Apns-Push-Type", "Apns-Id", "Authorization"} {
 				if v := r.Header.Get(k); v != "" {

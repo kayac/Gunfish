@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/kayac/Gunfish/config"
-	"golang.org/x/net/http2"
 )
 
 const (
@@ -168,9 +167,8 @@ func NewClient(conf config.SectionApns) (*Client, error) {
 		tr = ClientTransport(cert)
 	}
 
-	if err := http2.ConfigureTransport(tr); err != nil {
-		return nil, err
-	}
+	// APNs requires HTTP/2. A transport with a custom TLSClientConfig does not use HTTP/2 unless forced.
+	tr.ForceAttemptHTTP2 = true
 
 	key, err := os.ReadFile(conf.KeyFile)
 	if err != nil {
