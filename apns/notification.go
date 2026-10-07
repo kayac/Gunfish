@@ -2,11 +2,12 @@ package apns
 
 import (
 	"encoding/json"
+	"maps"
 )
 
 // Request for a http2 client
 type Notification struct {
-	Header  Header  `json:"header,omitempty"`
+	Header  Header  `json:"header"`
 	Token   string  `json:"token"`
 	Payload Payload `json:"payload"`
 }
@@ -23,19 +24,19 @@ type Header struct {
 // Payload is Notification Payload
 type Payload struct {
 	*APS     `json:"aps"`
-	Optional map[string]interface{}
+	Optional map[string]any
 }
 
 // APS is a part of Payload
 type APS struct {
-	Alert            interface{} `json:"alert,omitempty"`
-	Badge            int         `json:"badge,omitempty"`
-	Sound            string      `json:"sound,omitempty"`
-	ContentAvailable int         `json:"content-available,omitempty"`
-	Category         string      `json:"category,omitempty"`
-	ThreadID         string      `json:"thread-id,omitempty"`
-	MutableContent   int         `json:"mutable-content,omitempty"`
-	TargetContentID  string      `json:"target-content-id,omitempty"`
+	Alert            any    `json:"alert,omitempty"`
+	Badge            int    `json:"badge,omitempty"`
+	Sound            string `json:"sound,omitempty"`
+	ContentAvailable int    `json:"content-available,omitempty"`
+	Category         string `json:"category,omitempty"`
+	ThreadID         string `json:"thread-id,omitempty"`
+	MutableContent   int    `json:"mutable-content,omitempty"`
+	TargetContentID  string `json:"target-content-id,omitempty"`
 }
 
 // Alert is a part of APS
@@ -52,27 +53,25 @@ type Alert struct {
 
 // MarshalJSON for Payload struct.
 func (p Payload) MarshalJSON() ([]byte, error) {
-	payloadMap := make(map[string]interface{})
+	payloadMap := make(map[string]any)
 
 	payloadMap["aps"] = p.APS
-	for k, v := range p.Optional {
-		payloadMap[k] = v
-	}
+	maps.Copy(payloadMap, p.Optional)
 
 	return json.Marshal(payloadMap)
 }
 
 // UnmarshalJSON for Payload struct.
 func (p *Payload) UnmarshalJSON(data []byte) error {
-	var payloadMap map[string]interface{}
+	var payloadMap map[string]any
 	p.APS = &APS{}
-	p.Optional = make(map[string]interface{})
+	p.Optional = make(map[string]any)
 
 	if err := json.Unmarshal(data, &payloadMap); err != nil {
 		return err
 	}
 
-	apsMap := payloadMap["aps"].(map[string]interface{})
+	apsMap := payloadMap["aps"].(map[string]any)
 
 	for k, v := range apsMap {
 		switch k {

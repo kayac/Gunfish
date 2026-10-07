@@ -13,10 +13,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/kayac/Gunfish/apns"
 	"github.com/kayac/Gunfish/config"
 	"github.com/kayac/Gunfish/fcmv1"
-	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -108,7 +108,7 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 			select {
 			case <-s.ticker.C:
 				// Number of request retry send at once.
-				for cnt := 0; cnt < RetryOnceCount; cnt++ {
+				for range RetryOnceCount {
 					select {
 					case req := <-s.retryq:
 						var delay time.Duration
@@ -138,8 +138,7 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 
 	// spawn command
 	for i := 0; i < conf.Provider.WorkerNum; i++ {
-		s.wgrp.Add(1)
-		go func() {
+		s.wgrp.Go(func() {
 			logf := logrus.Fields{"type": "cmd_worker"}
 			for c := range s.cmdq {
 				LogWithFields(logf).Debugf("invoking command: %s %s", c.command, string(c.input))
@@ -151,8 +150,7 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 					LogWithFields(logf).Debugf("Success to execute command")
 				}
 			}
-			s.wgrp.Done()
-		}()
+		})
 	}
 
 	// Spawn workers
@@ -441,7 +439,7 @@ func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.Wait
 				RespTime: respTime,
 				Req:      req, // Must copy
 				Err:      err,
-				UID:      uuid.NewV4().String(),
+				UID:      uuid.NewString(),
 			}
 		case fcmv1.Payload:
 			if fcv1 == nil {
@@ -462,7 +460,7 @@ func spawnSender(wq <-chan Request, respq chan<- SenderResponse, wgrp *sync.Wait
 				RespTime: respTime,
 				Req:      req,
 				Err:      err,
-				UID:      uuid.NewV4().String(),
+				UID:      uuid.NewString(),
 			}
 		default:
 			LogWithFields(logrus.Fields{"type": "sender"}).
@@ -547,7 +545,7 @@ func InvokePipe(hook string, src io.Reader) ([]byte, error) {
 	// src copy to cmd.stdin
 	_, err = io.Copy(stdin, src)
 	if e, ok := err.(*os.PathError); ok && e.Err == syscall.EPIPE {
-		LogWithFields(logf).Errorf(e.Error())
+		LogWithFields(logf).Error(e.Error())
 	} else if err != nil {
 		LogWithFields(logf).Errorf("failed to write STDIN: cmd( %s ), error( %s )", hook, err.Error())
 	}

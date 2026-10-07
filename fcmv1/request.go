@@ -1,7 +1,7 @@
 package fcmv1
 
 import (
-	"firebase.google.com/go/messaging"
+	"firebase.google.com/go/v4/messaging"
 )
 
 // Payload for fcm v1

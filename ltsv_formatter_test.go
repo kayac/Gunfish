@@ -12,7 +12,7 @@ import (
 func TestQuoting(t *testing.T) {
 	tf := &gunfish.LtsvFormatter{}
 
-	checkQuoting := func(q bool, value interface{}) {
+	checkQuoting := func(q bool, value any) {
 		b, _ := tf.Format(logrus.WithField("test", value))
 		idx := bytes.Index(b, ([]byte)("test:"))
 		cont := bytes.Equal(b[idx+5:idx+6], []byte{'"'})

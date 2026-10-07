@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 
-	"github.com/kayac/Gunfish/config"
 	"github.com/kayac/Gunfish/apns"
+	"github.com/kayac/Gunfish/config"
 )
 
 func main() {

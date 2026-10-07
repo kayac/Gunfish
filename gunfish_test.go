@@ -29,7 +29,7 @@ func BenchmarkGunfish(b *testing.B) {
 	oj := `{"token":"token-x","payload":{"aps":{"alert":{"body":"message","title":"bench test"},"sound":"default"},"suboption":"test"}}`
 	jsons := bytes.NewBufferString("[")
 	jsons.WriteString(oj)
-	for i := 0; i < 2500; i++ {
+	for range 2500 {
 		jsons.WriteString("," + oj)
 	}
 	jsons.WriteString("]")

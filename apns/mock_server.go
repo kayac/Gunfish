@@ -66,11 +66,11 @@ func StartAPNSMockServer(cert, key string) {
 		if len(([]byte(token))) > LimitApnsTokenByteSize {
 			w.Header().Set("apns-id", "apns-id")
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, createErrorResponse(BadDeviceToken, http.StatusBadRequest))
+			fmt.Fprint(w, createErrorResponse(BadDeviceToken, http.StatusBadRequest))
 		} else if token == "missingtopic" {
 			// MissingDeviceToken
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, createErrorResponse(MissingTopic, http.StatusBadRequest))
+			fmt.Fprint(w, createErrorResponse(MissingTopic, http.StatusBadRequest))
 		} else if token == "status410" {
 			// If the value in the :status header is 410, the value of this key is
 			// the last time at which APNs confirmed that the device token was

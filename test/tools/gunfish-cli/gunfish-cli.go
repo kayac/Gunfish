@@ -65,10 +65,10 @@ func run() error {
 	}
 
 	opts := map[string]string{}
-	payloads := make([]map[string]interface{}, count)
+	payloads := make([]map[string]any, count)
 	if jsonFile == "" {
 		if options != "" {
-			for _, opt := range strings.Split(options, ",") {
+			for opt := range strings.SplitSeq(options, ",") {
 				kv := strings.Split(opt, "=")
 				key, val := kv[0], kv[1]
 				opts[key] = val
@@ -76,7 +76,7 @@ func run() error {
 		}
 
 		for i := 0; i < count; i++ {
-			payloads[i] = map[string]interface{}{}
+			payloads[i] = map[string]any{}
 			payloads[i] = buildPayload(token, message, sound, apnsTopic, opts)
 		}
 	}
@@ -123,8 +123,8 @@ func run() error {
 	return nil
 }
 
-func buildPayload(token, message, sound, apnsTopic string, opts map[string]string) map[string]interface{} {
-	payload := map[string]interface{}{
+func buildPayload(token, message, sound, apnsTopic string, opts map[string]string) map[string]any {
+	payload := map[string]any{
 		"aps": map[string]string{
 			"alert": message,
 			"sound": sound,
@@ -134,16 +134,16 @@ func buildPayload(token, message, sound, apnsTopic string, opts map[string]strin
 		payload[k] = v
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"payload": payload,
 		"token":   token,
-		"header": map[string]interface{}{
+		"header": map[string]any{
 			"apns-topic": apnsTopic,
 		},
 	}
 }
 
-func newRequest(endpoint, jsonFile string, payloads []map[string]interface{}) (*http.Request, error) {
+func newRequest(endpoint, jsonFile string, payloads []map[string]any) (*http.Request, error) {
 	if jsonFile == "" {
 		b := &bytes.Buffer{}
 		err := json.NewEncoder(b).Encode(payloads)

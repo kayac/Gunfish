@@ -39,7 +39,7 @@ const fcmProjectID = "e2e"
 type received struct {
 	Path   string
 	Header http.Header
-	Body   interface{}
+	Body   any
 }
 
 type recorder struct {
@@ -54,7 +54,7 @@ func (r *recorder) wrap(next http.Handler) http.Handler {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		var body interface{}
+		var body any
 		if err := json.Unmarshal(b, &body); err != nil {
 			body = string(b)
 		}
@@ -204,15 +204,15 @@ projectid = "%s"
 	}
 
 	t.Run("apns requests", func(t *testing.T) {
-		got := map[string]interface{}{}
+		got := map[string]any{}
 		for _, r := range apnsRec.snapshot() {
-			header := map[string]interface{}{}
+			header := map[string]any{}
 			for _, k := range []string{"Apns-Topic", "Apns-Push-Type", "Apns-Id", "Authorization"} {
 				if v := r.Header.Get(k); v != "" {
 					header[k] = v
 				}
 			}
-			got[r.Path] = map[string]interface{}{"header": header, "body": r.Body}
+			got[r.Path] = map[string]any{"header": header, "body": r.Body}
 		}
 		want := mustJSON(t, `{
   "/3/device/e2e-apns-1": {
@@ -225,7 +225,7 @@ projectid = "%s"
   "/3/device/missingtopic": {"header": {}, "body": {"aps": {"alert": "missing topic"}}},
   "/3/device/e2e-apns-form": {"header": {}, "body": {"aps": {"alert": "form"}}}
 }`)
-		if diff := cmp.Diff(want, interface{}(got)); diff != "" {
+		if diff := cmp.Diff(want, any(got)); diff != "" {
 			t.Errorf("APNs requests mismatch (-want +got):\n%s", diff)
 		}
 		if n := len(apnsRec.snapshot()); n != 6 {
@@ -234,7 +234,7 @@ projectid = "%s"
 	})
 
 	t.Run("fcm requests", func(t *testing.T) {
-		got := map[string]interface{}{}
+		got := map[string]any{}
 		for _, r := range fcmRec.snapshot() {
 			if r.Path != "/v1/projects/"+fcmProjectID+"/messages:send" {
 				t.Errorf("unexpected FCM request path: %s", r.Path)
@@ -247,7 +247,7 @@ projectid = "%s"
   "Bearer UNREGISTERED": {"message": {"token": "UNREGISTERED", "notification": {"title": "unregistered"}}},
   "Bearer INVALID_ARGUMENT": {"message": {"token": "INVALID_ARGUMENT", "notification": {"title": "invalid"}}}
 }`)
-		if diff := cmp.Diff(want, interface{}(got)); diff != "" {
+		if diff := cmp.Diff(want, any(got)); diff != "" {
 			t.Errorf("FCM requests mismatch (-want +got):\n%s", diff)
 		}
 		if n := len(fcmRec.snapshot()); n != 4 {
@@ -256,7 +256,7 @@ projectid = "%s"
 	})
 
 	t.Run("error hook", func(t *testing.T) {
-		got := map[string]interface{}{}
+		got := map[string]any{}
 		lines := readHooks(t, hookDir)
 		for _, l := range lines {
 			got[fmt.Sprint(l["token"])] = l
@@ -268,7 +268,7 @@ projectid = "%s"
   "UNREGISTERED": {"provider": "fcmv1", "token": "UNREGISTERED", "status": 404, "error": {"status": "UNREGISTERED", "message": "mock error:UNREGISTERED"}},
   "INVALID_ARGUMENT": {"provider": "fcmv1", "token": "INVALID_ARGUMENT", "status": 400, "error": {"status": "INVALID_ARGUMENT", "message": "mock error:INVALID_ARGUMENT"}}
 }`)
-		if diff := cmp.Diff(want, interface{}(got)); diff != "" {
+		if diff := cmp.Diff(want, any(got)); diff != "" {
 			t.Errorf("error hook input mismatch (-want +got):\n%s", diff)
 		}
 		if len(lines) != 5 {
@@ -392,33 +392,33 @@ func post(t *testing.T, u, contentType, body string) {
 	}
 }
 
-func getJSON(t *testing.T, u string) map[string]interface{} {
+func getJSON(t *testing.T, u string) map[string]any {
 	t.Helper()
 	res, err := http.Get(u)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer res.Body.Close()
-	var v map[string]interface{}
+	var v map[string]any
 	if err := json.NewDecoder(res.Body).Decode(&v); err != nil {
 		t.Fatal(err)
 	}
 	return v
 }
 
-func readHooks(t *testing.T, dir string) []map[string]interface{} {
+func readHooks(t *testing.T, dir string) []map[string]any {
 	t.Helper()
 	files, err := filepath.Glob(filepath.Join(dir, "*.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var hooks []map[string]interface{}
+	var hooks []map[string]any
 	for _, f := range files {
 		b, err := os.ReadFile(f)
 		if err != nil {
 			t.Fatal(err)
 		}
-		var v map[string]interface{}
+		var v map[string]any
 		if err := json.Unmarshal(b, &v); err != nil {
 			t.Fatalf("invalid hook input %q: %s", b, err)
 		}
@@ -427,16 +427,16 @@ func readHooks(t *testing.T, dir string) []map[string]interface{} {
 	return hooks
 }
 
-func mustJSON(t *testing.T, s string) interface{} {
+func mustJSON(t *testing.T, s string) any {
 	t.Helper()
-	var v interface{}
+	var v any
 	if err := json.Unmarshal([]byte(s), &v); err != nil {
 		t.Fatalf("invalid JSON %s: %s", s, err)
 	}
 	return v
 }
 
-func pick(m map[string]interface{}, keys map[string]float64) map[string]float64 {
+func pick(m map[string]any, keys map[string]float64) map[string]float64 {
 	r := make(map[string]float64, len(keys))
 	for k := range keys {
 		if v, ok := m[k].(float64); ok {
