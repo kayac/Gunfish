@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gunfish FCM Test</title>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --panel: #ffffff;
+    --text: #1d1d1b;
+    --muted: #6b6b66;
+    --border: #deded8;
+    --accent: #2563eb;
+    --accent-text: #ffffff;
+    --ok: #15803d;
+    --err: #b91c1c;
+    --code-bg: #f0f0ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161615;
+      --panel: #1f1f1d;
+      --text: #ecece8;
+      --muted: #9a9a94;
+      --border: #34342f;
+      --accent: #60a5fa;
+      --accent-text: #0b1220;
+      --ok: #4ade80;
+      --err: #f87171;
+      --code-bg: #2a2a27;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 0 0 12px; }
+  p.lead { color: var(--muted); margin: 0 0 24px; }
+  section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .step { color: var(--muted); font-weight: normal; margin-right: 6px; }
+  button {
+    font: inherit;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: var(--accent-text);
+    cursor: pointer;
+  }
+  button.secondary { background: transparent; color: var(--accent); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  textarea, pre, code {
+    font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  textarea {
+    width: 100%;
+    min-height: 220px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--code-bg);
+    color: var(--text);
+  }
+  pre {
+    margin: 0;
+    padding: 10px;
+    background: var(--code-bg);
+    border-radius: 6px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+  .status { color: var(--muted); }
+  .status.ok { color: var(--ok); }
+  .status.err { color: var(--err); }
+  #log { display: flex; flex-direction: column; gap: 10px; }
+  .entry { border-left: 3px solid var(--accent); padding-left: 10px; }
+  .entry .meta { color: var(--muted); font-size: 13px; margin-bottom: 4px; }
+  .empty { color: var(--muted); }
+</style>
+<script src="/config.js"></script>
+</head>
+<body>
+<main>
+  <h1>Gunfish FCM Test</h1>
+  <p class="lead">Receive FCM notifications sent via Gunfish <code>/push/fcm/v1</code> in this browser.</p>
+
+  <section>
+    <h2><span class="step">1</span>Get an FCM registration token</h2>
+    <div class="row">
+      <button id="enable">Enable notifications</button>
+      <span id="enable-status" class="status"></span>
+    </div>
+    <div class="row" id="token-row" hidden>
+      <pre id="token" style="flex: 1"></pre>
+      <button id="copy-token" class="secondary">Copy</button>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="step">2</span>Send a notification via Gunfish</h2>
+    <textarea id="payload" spellcheck="false"></textarea>
+    <div class="row">
+      <button id="send" disabled>Send</button>
+      <span id="send-status" class="status"></span>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="step">3</span>Received messages</h2>
+    <p class="status">Foreground messages are shown here. When this tab is in the background, the browser shows a notification.</p>
+    <div id="log"><div class="empty">No messages yet.</div></div>
+  </section>
+</main>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

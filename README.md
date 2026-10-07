@@ -314,6 +314,30 @@ $ ./gunfish-cli -type apns -count 1 -token <device token> -apns-topic <your topi
 $ ./apnsmock -cert-file ./test/server.crt -key-file ./test/server.key -verbose
 ```
 
+#### Receive FCM notifications in a browser
+
+fcmwebclient is a web app to confirm that notifications sent via Gunfish `/push/fcm/v1` are delivered by FCM.
+
+1. In the Firebase console of your project,
+   - Add a web app, and save its `firebaseConfig` object as JSON (e.g. `firebase-config.json`).
+   - Generate a key pair in "Cloud Messaging" > "Web Push certificates", and use the public key as `-vapid-key`.
+   - Generate a private key of a service account, and use it as `google_application_credentials` for Gunfish.
+2. Start Gunfish with FCM v1 enabled. A minimal configuration is:
+   ```toml
+   [provider]
+   worker_num = 1
+   max_connections = 100
+
+   [fcm_v1]
+   google_application_credentials = "/path/to/service-account.json"
+   ```
+3. Start fcmwebclient and open http://localhost:8080/ in a browser.
+   ```
+   $ go run ./test/tools/fcmwebclient -firebase-config firebase-config.json -vapid-key <public key> -gunfish http://localhost:8003
+   ```
+4. Click "Enable notifications" to get an FCM registration token, then click "Send" to send a notification via Gunfish.
+   Received messages are shown in the page while the tab is in the foreground, and as browser notifications while it is in the background.
+
 ### Benchmark
 
 Gunfish repository includes Lua script for the benchmark. You can use wrk command with `err_and_success.lua` script.
