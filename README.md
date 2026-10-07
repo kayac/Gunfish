@@ -22,9 +22,11 @@ Download the latest binary from [releases](https://github.com/kayac/Gunfish/rele
 
 ### Docker images
 
-[DockerHub](https://hub.docker.com/r/kayac/gunfish/)
-
 [GitHub Packages](https://github.com/kayac/Gunfish/pkgs/container/gunfish)
+
+```console
+$ docker pull ghcr.io/kayac/gunfish:<version>
+```
 
 ### Homebrew
 
@@ -274,7 +276,7 @@ Gunfish supports graceful restarting based on `Start Server`. So, you should sta
 
 ```bash
 ### install start_server
-$ go get github.com/lestrrat/go-server-starter/cmd/start_server
+$ go install github.com/lestrrat-go/server-starter/cmd/start_server@latest
 
 ### Starts Gunfish with start_server
 $ start_server --port 38003 --pid-file gunfish.pid -- ./gunfish -c conf/gunfish.toml

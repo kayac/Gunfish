@@ -1,9 +1,9 @@
-FROM alpine:3.18
-LABEL maintainer "FUJIWARA Shunichiro <fujiwara.shunichiro@gmail.com>"
+FROM alpine:3.24
+LABEL maintainer="FUJIWARA Shunichiro <fujiwara.shunichiro@gmail.com>"
 
 ARG VERSION
-ARG TARGETARCH
-ADD dist/Gunfish_linux_${TARGETARCH}/gunfish /usr/local/bin/gunfish
+ARG TARGETPLATFORM
+COPY dist/docker/${TARGETPLATFORM}/gunfish /usr/local/bin/gunfish
 EXPOSE 8003
 WORKDIR /opt/gunfish
 
