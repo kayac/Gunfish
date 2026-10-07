@@ -133,6 +133,10 @@ Response example:
 
 FCM v1 endpoint allows multiple payloads in a single request body. You can build request body simply concat multiple JSON payloads. Gunfish sends for each that payloads to FCM server. Limitation: Max count of payloads in a request body is 500.
 
+### 503 Service Unavailable
+
+When the queue of Gunfish is full, `/push/apns` and `/push/fcm/v1` respond `503 Service Unavailable` with a `Retry-After` header (seconds). Retry-After starts at 10 and increases while 503 responses continue within a few seconds, up to 60. It is reset to 10 when no 503 response has occurred for more than 60 seconds.
+
 ### GET /stats/app
 
 ```json

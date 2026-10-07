@@ -59,6 +59,26 @@ type Command struct {
 }
 
 // EnqueueClientRequest enqueues request to supervisor's queue from external application service
+// resend enqueues a request to retry to send notification.
+func (s *Supervisor) resend(req Request, delay time.Duration) {
+	select {
+	case <-s.exit:
+		LogWithFields(logrus.Fields{"delay": delay, "type": "retry", "resend_cnt": req.Tries}).
+			Warnf("Could not retry to enqueue because the supervisor is stopped.")
+		return
+	default:
+	}
+	reqs := &[]Request{req}
+	select {
+	case s.queue <- reqs:
+		LogWithFields(logrus.Fields{"delay": delay, "type": "retry", "resend_cnt": req.Tries}).
+			Debugf("Enqueue to retry to send notification.")
+	default:
+		LogWithFields(logrus.Fields{"delay": delay, "type": "retry"}).
+			Infof("Could not retry to enqueue because the supervisor queue is full.")
+	}
+}
+
 func (s *Supervisor) EnqueueClientRequest(reqs *[]Request) error {
 	logf := logrus.Fields{
 		"type":             "supervisor",
@@ -117,17 +137,7 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 						if RetryBackoff {
 							delay = time.Duration(math.Pow(float64(req.Tries), 2)) * 100 * time.Millisecond
 						}
-						time.AfterFunc(delay, func() {
-							reqs := &[]Request{req}
-							select {
-							case s.queue <- reqs:
-								LogWithFields(logrus.Fields{"delay": delay, "type": "retry", "resend_cnt": req.Tries}).
-									Debugf("Enqueue to retry to send notification.")
-							default:
-								LogWithFields(logrus.Fields{"delay": delay, "type": "retry"}).
-									Infof("Could not retry to enqueue because the supervisor queue is full.")
-							}
-						})
+						time.AfterFunc(delay, func() { s.resend(req, delay) })
 					default:
 					}
 				}
@@ -242,8 +252,8 @@ func (s *Supervisor) Shutdown() {
 	s.wgrp.Wait()
 	close(s.cmdq)
 	s.cmdWgrp.Wait()
-	close(s.queue)
-	close(s.retryq)
+	// queue and retryq are not closed, because timers to retry (time.AfterFunc)
+	// may send to them after shutdown.
 
 	LogWithFields(logrus.Fields{
 		"type": "supervisor",
