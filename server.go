@@ -335,9 +335,9 @@ func validateMethod(res http.ResponseWriter, req *http.Request) error {
 func setRetryAfter(res http.ResponseWriter, req *http.Request, reason string) {
 	now := time.Now().Unix()
 	atomic.StoreInt64(&(srvStats.ServiceUnavailableAt), now)
-	updateRetryAfterStat(now - srvStats.ServiceUnavailableAt)
+	updateRetryAfterStat(now - atomic.LoadInt64(&(srvStats.ServiceUnavailableAt)))
 	// Retry-After is set seconds
-	res.Header().Set("Retry-After", fmt.Sprintf("%d", srvStats.RetryAfter))
+	res.Header().Set("Retry-After", fmt.Sprintf("%d", atomic.LoadInt64(&(srvStats.RetryAfter))))
 	res.WriteHeader(http.StatusServiceUnavailable)
 	fmt.Fprintf(res, `{"reason":"%s"}`, reason)
 }
@@ -440,7 +440,7 @@ func updateRetryAfterStat(x int64) {
 		nxtRA = int64(RetryAfterSecond / time.Second)
 	} else {
 		a := int64(math.Log(float64(10/(x+1) + 1)))
-		nxtRA = min(srvStats.RetryAfter+2*a, int64(ResetRetryAfterSecond/time.Second))
+		nxtRA = min(atomic.LoadInt64(&(srvStats.RetryAfter))+2*a, int64(ResetRetryAfterSecond/time.Second))
 	}
 
 	atomic.StoreInt64(&(srvStats.RetryAfter), nxtRA)

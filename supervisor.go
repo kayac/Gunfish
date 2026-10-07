@@ -27,7 +27,8 @@ type Supervisor struct {
 	cmdq    chan Command    // enqueues this command queue when to get error response from apns.
 	exit    chan struct{}   // exit channel is used to stop the supervisor.
 	ticker  *time.Ticker    // ticker checks retry queue that has notifications to resend periodically.
-	wgrp    *sync.WaitGroup
+	wgrp    *sync.WaitGroup // waits for workers
+	cmdWgrp *sync.WaitGroup // waits for command workers
 	workers []*Worker
 }
 
@@ -92,12 +93,13 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 	// Initialize Supervisor
 	swgrp := &sync.WaitGroup{}
 	s := Supervisor{
-		queue:  make(chan *[]Request, conf.Provider.QueueSize),
-		retryq: make(chan Request, conf.Provider.RequestQueueSize*conf.Provider.WorkerNum),
-		cmdq:   make(chan Command, wqSize*conf.Provider.WorkerNum),
-		exit:   make(chan struct{}, 1),
-		ticker: time.NewTicker(RetryWaitTime),
-		wgrp:   swgrp,
+		queue:   make(chan *[]Request, conf.Provider.QueueSize),
+		retryq:  make(chan Request, conf.Provider.RequestQueueSize*conf.Provider.WorkerNum),
+		cmdq:    make(chan Command, wqSize*conf.Provider.WorkerNum),
+		exit:    make(chan struct{}, 1),
+		ticker:  time.NewTicker(RetryWaitTime),
+		wgrp:    swgrp,
+		cmdWgrp: &sync.WaitGroup{},
 	}
 	LogWithFields(logrus.Fields{}).Infof("Retry queue size: %d", cap(s.retryq))
 	LogWithFields(logrus.Fields{}).Infof("Queue size: %d", cap(s.queue))
@@ -138,7 +140,7 @@ func StartSupervisor(conf *config.Config) (Supervisor, error) {
 
 	// spawn command
 	for i := 0; i < conf.Provider.WorkerNum; i++ {
-		s.wgrp.Go(func() {
+		s.cmdWgrp.Go(func() {
 			logf := logrus.Fields{"type": "cmd_worker"}
 			for c := range s.cmdq {
 				LogWithFields(logf).Debugf("invoking command: %s %s", c.command, string(c.input))
@@ -236,8 +238,10 @@ func (s *Supervisor) Shutdown() {
 		time.Sleep(ShutdownWaitTime)
 	}
 	close(s.exit)
-	close(s.cmdq)
+	// Workers may enqueue commands until they stop, so cmdq must be closed after that.
 	s.wgrp.Wait()
+	close(s.cmdq)
+	s.cmdWgrp.Wait()
 	close(s.queue)
 	close(s.retryq)
 
