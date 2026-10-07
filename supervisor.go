@@ -102,7 +102,8 @@ func (s *Supervisor) EnqueueClientRequest(reqs *[]Request) error {
 func StartSupervisor(conf *config.Config) (Supervisor, error) {
 	// Calculates each worker queue size to accept requests with a given parameter of requests per sec as flow rate.
 	var wqSize int
-	tp := ((conf.Provider.RequestQueueSize * int(AverageResponseTime/time.Millisecond)) / 1000) / SenderNum
+	// tp must be at least 1 to avoid division by zero when max_request_size is small.
+	tp := max(((conf.Provider.RequestQueueSize*int(AverageResponseTime/time.Millisecond))/1000)/SenderNum, 1)
 	dif := (RequestPerSec - conf.Provider.RequestQueueSize/tp)
 	if dif > 0 {
 		wqSize = dif * int(FlowRateInterval/time.Second) / conf.Provider.WorkerNum
