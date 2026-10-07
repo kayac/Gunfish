@@ -8,7 +8,7 @@ import (
 )
 
 // LogWithFields wraps logrus's WithFields
-func LogWithFields(fields map[string]interface{}) *logrus.Entry {
+func LogWithFields(fields map[string]any) *logrus.Entry {
 	_, file, line, _ := runtime.Caller(1)
 
 	fields["file"] = file

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"firebase.google.com/go/v4/messaging"
 	"github.com/google/go-cmp/cmp"
-	"firebase.google.com/go/messaging"
 )
 
 func TestUnmarshalPayload(t *testing.T) {

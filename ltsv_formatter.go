@@ -78,7 +78,7 @@ func needsQuoting(text string) bool {
 	return true
 }
 
-func (f *LtsvFormatter) appendKeyValue(b *bytes.Buffer, key string, value interface{}) {
+func (f *LtsvFormatter) appendKeyValue(b *bytes.Buffer, key string, value any) {
 
 	b.WriteString(key)
 	b.WriteByte(':')

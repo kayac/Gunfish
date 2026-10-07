@@ -9,11 +9,11 @@ type Request struct {
 	Tries        int
 }
 
-type Notification interface{}
+type Notification any
 
 // PostedData is posted data to this provider server /push/apns.
 type PostedData struct {
-	Header  apns.Header  `json:"header,omitempty"`
+	Header  apns.Header  `json:"header"`
 	Token   string       `json:"token"`
 	Payload apns.Payload `json:"payload"`
 }

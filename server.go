@@ -158,13 +158,11 @@ func StartServer(conf config.Config, env Environment) {
 
 	srv := &http.Server{Handler: mux}
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		if err := srv.Serve(llis); err != nil && err != http.ErrServerClosed {
 			LogWithFields(logrus.Fields{}).Error(err)
 		}
-		wg.Done()
-	}()
+	})
 
 	// signal handling
 	wg.Add(1)
@@ -231,7 +229,7 @@ func (prov *Provider) PushAPNsHandler() http.HandlerFunc {
 		reqs := make([]Request, len(ps))
 		for i, p := range ps {
 			switch t := p.Payload.Alert.(type) {
-			case map[string]interface{}:
+			case map[string]any:
 				var alert apns.Alert
 				mapToAlert(t, &alert)
 				p.Payload.Alert = alert
@@ -341,7 +339,7 @@ func setRetryAfter(res http.ResponseWriter, req *http.Request, reason string) {
 	// Retry-After is set seconds
 	res.Header().Set("Retry-After", fmt.Sprintf("%d", srvStats.RetryAfter))
 	res.WriteHeader(http.StatusServiceUnavailable)
-	fmt.Fprintf(res, fmt.Sprintf(`{"reason":"%s"}`, reason))
+	fmt.Fprintf(res, `{"reason":"%s"}`, reason)
 }
 
 func (prov *Provider) StatsHandler() http.HandlerFunc {
@@ -399,7 +397,7 @@ func validateStatsHandler(res http.ResponseWriter, req *http.Request) bool {
 	return true
 }
 
-func mapToAlert(mapVal map[string]interface{}, alert *apns.Alert) {
+func mapToAlert(mapVal map[string]any, alert *apns.Alert) {
 	a := reflect.ValueOf(alert).Elem()
 	for k, v := range mapVal {
 		newk, ok := AlertKeyToField[k]
@@ -414,7 +412,7 @@ func mapToAlert(mapVal map[string]interface{}, alert *apns.Alert) {
 func startSignalReciever(wg *sync.WaitGroup, srv *http.Server) {
 	defer wg.Done()
 
-	sigChan := make(chan os.Signal)
+	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT)
 	s := <-sigChan
 	switch s {
@@ -442,11 +440,7 @@ func updateRetryAfterStat(x int64) {
 		nxtRA = int64(RetryAfterSecond / time.Second)
 	} else {
 		a := int64(math.Log(float64(10/(x+1) + 1)))
-		if srvStats.RetryAfter+2*a < int64(ResetRetryAfterSecond/time.Second) {
-			nxtRA = srvStats.RetryAfter + 2*a
-		} else {
-			nxtRA = int64(ResetRetryAfterSecond / time.Second)
-		}
+		nxtRA = min(srvStats.RetryAfter+2*a, int64(ResetRetryAfterSecond/time.Second))
 	}
 
 	atomic.StoreInt64(&(srvStats.RetryAfter), nxtRA)

@@ -165,7 +165,7 @@ func _TestEnqueueTooManyRequest(t *testing.T) {
 	handler := prov.PushAPNsHandler()
 
 	var jsons [][]byte
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		jsons = append(jsons, createJSONPostedData(1)) // Too many requests
 	}
 
@@ -355,7 +355,7 @@ func createFormPostedData(num int) []byte {
 func createPostedData(num int) []byte {
 	pds := make([]gunfish.PostedData, num)
 	tokens := make([]string, num)
-	for i := 0; i < num; i++ {
+	for i := range num {
 		tokens[i] = fmt.Sprintf("%032d", i)
 	}
 	for i, v := range tokens {

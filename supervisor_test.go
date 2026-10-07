@@ -3,6 +3,7 @@ package gunfish_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"testing"
@@ -159,7 +160,7 @@ func TestEnqueuRequestToSupervisor(t *testing.T) {
 
 func repeatRequestData(token string, num int) []gunfish.Request {
 	var reqs []gunfish.Request
-	for i := 0; i < num; i++ {
+	for range num {
 		// Create request
 		aps := &apns.APS{
 			Alert: &apns.Alert{
@@ -187,7 +188,7 @@ func repeatRequestData(token string, num int) []gunfish.Request {
 func TestSuccessOrFailureInvoke(t *testing.T) {
 	// prepare SenderResponse
 	token := "invalid token"
-	sre := fmt.Errorf(apns.Unregistered.String())
+	sre := errors.New(apns.Unregistered.String())
 	aps := &apns.APS{
 		Alert: apns.Alert{
 			Title: "test",
@@ -211,7 +212,7 @@ func TestSuccessOrFailureInvoke(t *testing.T) {
 	}
 	j, err := json.Marshal(sr)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 
 	// Succeed to invoke
